@@ -24,7 +24,13 @@ def save_json(data: Any, output_path: str | Path) -> Path:
 
 
 def load_yaml(path: str | Path) -> dict[str, Any]:
-    import yaml
+    try:
+        import yaml
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "PyYAML is required to read YAML config files. "
+            "Install dependencies with `pip install -r requirements.txt`."
+        ) from exc
 
     with Path(path).open("r", encoding="utf-8") as file:
         data = yaml.safe_load(file) or {}

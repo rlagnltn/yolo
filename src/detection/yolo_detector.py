@@ -14,14 +14,14 @@ class Detection:
     class_id: int
     class_name: str
     confidence: float
-    bbox: list[float]
+    bbox_xyxy: list[float]
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "class_id": self.class_id,
             "class_name": self.class_name,
             "confidence": self.confidence,
-            "bbox": self.bbox,
+            "bbox_xyxy": self.bbox_xyxy,
         }
 
 
@@ -45,7 +45,15 @@ class YOLODetector:
         self.model_name = model_name
         self.confidence_threshold = confidence_threshold
         self.device = None if device == "auto" else device
-        self.model = YOLO(model_name)
+
+        try:
+            self.model = YOLO(model_name)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Failed to load YOLO model '{model_name}'. "
+                "Check that the model name/path is valid and that model weights "
+                "can be downloaded or are available locally."
+            ) from exc
 
     def detect_frame(self, frame: Any) -> list[dict[str, Any]]:
         """Run detection on a BGR OpenCV frame."""
@@ -75,7 +83,7 @@ class YOLODetector:
                     class_id=class_id,
                     class_name=str(names.get(class_id, class_id)),
                     confidence=confidence,
-                    bbox=[float(value) for value in xyxy],
+                    bbox_xyxy=[float(value) for value in xyxy],
                 ).to_dict()
             )
 
@@ -92,13 +100,16 @@ class YOLODetector:
             raise FileNotFoundError(f"Could not read image: {image_path}")
 
         return {
-            "source": str(image_path),
+            "input": str(image_path),
+            "model": self.model_name,
             "type": "image",
             "frames": [
                 {
                     "frame_index": 0,
                     "timestamp_sec": 0.0,
-                    "detections": self.detect_frame(frame),
+                    "width": int(frame.shape[1]),
+                    "height": int(frame.shape[0]),
+                    "objects": self.detect_frame(frame),
                 }
             ],
         }

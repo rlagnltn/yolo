@@ -2,20 +2,20 @@
 
 ## Current Focus
 
-Build a clean research scaffold and implement the first runnable YOLO detection pipeline.
+Sample driving-video based YOLO detection validation.
 
 ## Current Scope Boundary
 
-Only object detection is implemented. Segmentation, depth estimation, BEV transformation, potential field generation, and path planning are intentionally left as extension points.
+Only object detection is implemented. Semantic Segmentation, Depth Estimation, BEV transformation, Potential Field generation, and Path Planning are intentionally not implemented in this step.
 
 ## Next Work Order
 
-1. Add a sample driving video or dataset loader.
-2. Run detection and inspect `outputs/detections/detections.json`.
-3. Add semantic segmentation.
-4. Add depth estimation.
-5. Design BEV and potential field data formats.
+1. User places a driving video at `datasets/raw/sample.mp4` or passes another path with `--input`.
+2. Run YOLO detection and inspect `outputs/detections/detections.json`.
+3. Inspect annotated frames in `outputs/visualizations/` when `--save-vis` is used.
+4. Add the Semantic Segmentation module in the next stage.
 
 ## Implementation Notes
 
-Detection results use bounding boxes in `[x1, y1, x2, y2]` format.
+Detection results use `bbox_xyxy` in `[x1, y1, x2, y2]` format.
+`datasets/raw/` is ignored by Git, so sample videos are kept local.

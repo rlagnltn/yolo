@@ -9,6 +9,7 @@ dependencies = [
   "numpy",
   "PyYAML",
   "tqdm",
+  "pytest",
 ]
 
 [tool.pytest.ini_options]
