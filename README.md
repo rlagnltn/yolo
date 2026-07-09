@@ -6,14 +6,16 @@ YOLO-based research scaffold for detecting objects in driving videos, then exten
 
 The final target is a vision pipeline that accepts vehicle driving video, runs object detection, semantic segmentation, depth estimation, BEV transformation, semantic potential field generation, and path planning toward a safe target.
 
-This first implementation focuses on a working YOLO object-detection pipeline:
+The current implementation focuses on a working YOLO object-detection pipeline and a YOLO segmentation pipeline:
 
 - Read an image or video input.
 - Run YOLO object detection with `ultralytics`.
+- Run YOLO segmentation with `ultralytics`.
 - Save frame-level detections as JSON.
-- Optionally save bounding-box visualizations.
+- Save frame-level segmentation records as JSON.
+- Optionally save bounding-box visualizations, segmentation masks, and overlay visualizations.
 
-Segmentation, depth, BEV, mapping, potential field, and planner modules are included as extension points but are not implemented yet.
+Depth, BEV, mapping, potential field, and planner modules are included as extension points but are not implemented yet.
 
 ## Project Structure
 
@@ -33,6 +35,9 @@ yolo/
   outputs/
     detections/
     frames/
+    segmentations/
+      masks/
+      visualizations/
     visualizations/
   scripts/
   src/
@@ -55,7 +60,7 @@ Python 3.10 or newer is recommended.
 pip install -r requirements.txt
 ```
 
-The default config uses `yolov8n.pt`. Ultralytics will download the model weights on first use if they are not already available.
+The detection config uses `yolov8n.pt`; the segmentation config uses `yolov8n-seg.pt`. Ultralytics will download model weights on first use if they are not already available.
 
 ## Sample Input Video
 
@@ -132,10 +137,70 @@ Detection JSON follows this structure:
 
 If `datasets/raw/sample.mp4` does not exist, the CLI prints a friendly error and asks you to either place the file there or pass another path with `--input`.
 
+## Run Segmentation
+
+Detection returns object bounding boxes. Segmentation returns object/region masks, plus bounding boxes and class labels when the model provides them.
+
+```bash
+pip install -r requirements.txt
+python scripts/run_segmentation.py --input datasets/raw/sample.mp4 --save-vis
+python scripts/run_segmentation.py --input datasets/raw/sample.mp4 --save-vis --max-frames 100
+```
+
+Useful options:
+
+```bash
+python scripts/run_segmentation.py \
+  --input datasets/raw/sample.mp4 \
+  --output outputs/segmentations/segmentations.json \
+  --mask-dir outputs/segmentations/masks \
+  --visualization-dir outputs/segmentations/visualizations \
+  --model yolov8n-seg.pt \
+  --confidence 0.25 \
+  --device auto \
+  --max-frames 100 \
+  --save-vis
+```
+
+Segmentation outputs:
+
+- `outputs/segmentations/segmentations.json`: frame-level segmentation records.
+- `outputs/segmentations/masks/`: per-object binary mask PNG files.
+- `outputs/segmentations/visualizations/`: overlay frames when `--save-vis` or config visualization saving is enabled.
+
+Segmentation JSON follows this structure:
+
+```json
+{
+  "input": "datasets/raw/sample.mp4",
+  "model": "yolov8n-seg.pt",
+  "frames": [
+    {
+      "frame_index": 0,
+      "timestamp_sec": 0.0,
+      "width": 1280,
+      "height": 720,
+      "segments": [
+        {
+          "class_id": 0,
+          "class_name": "person",
+          "confidence": 0.91,
+          "bbox_xyxy": [100.0, 200.0, 300.0, 500.0],
+          "mask_area": 12450,
+          "mask_path": "outputs/segmentations/masks/frame_000000_obj_000.png"
+        }
+      ]
+    }
+  ]
+}
+```
+
+The current segmentation implementation uses YOLO segmentation for quick validation. The code is structured so the model wrapper can later be replaced with SegFormer, Mask2Former, DeepLabV3+, or another semantic segmentation backend. BEV transformation, potential field generation, and path planning are still intentionally out of scope at this stage.
+
 ## Roadmap
 
 1. YOLO object detection for driving video.
-2. Semantic segmentation module.
+2. YOLO semantic segmentation module.
 3. Depth estimation module.
 4. BEV transformation and semantic map generation.
 5. Semantic potential field generation.

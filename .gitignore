@@ -1,5 +1,7 @@
 __pycache__/
 *.pyc
+.pytest_cache/
+.pytest-tmp/
 .venv/
 venv/
 .env
@@ -8,16 +10,24 @@ datasets/raw/*
 !datasets/raw/.gitkeep
 datasets/processed/*
 !datasets/processed/.gitkeep
-outputs/*
+outputs/**
+!outputs/
 !outputs/detections/
 !outputs/detections/.gitkeep
 !outputs/frames/
 !outputs/frames/.gitkeep
 !outputs/visualizations/
 !outputs/visualizations/.gitkeep
+!outputs/segmentations/
+!outputs/segmentations/.gitkeep
+!outputs/segmentations/masks/
+!outputs/segmentations/masks/.gitkeep
+!outputs/segmentations/visualizations/
+!outputs/segmentations/visualizations/.gitkeep
 models/**/*.pt
 models/**/*.pth
 models/**/*.onnx
+*.pt
 
 .DS_Store
 Thumbs.db

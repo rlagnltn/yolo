@@ -14,18 +14,21 @@
 ## Current Pipeline
 
 ```text
-image/video -> YOLODetector -> detections.json
-                         \
-                          -> annotated visualizations
+Driving Video
+  -> Frame Extraction
+  -> YOLO Object Detection
+  -> YOLO Segmentation
+  -> Detection/Segmentation JSON
+  -> Visualization Output
 ```
 
 ## Module Responsibilities
 
 - `src/detection`: YOLO model loading and detection result formatting.
-- `src/segmentation`: future semantic segmentation module.
+- `src/segmentation`: YOLO segmentation model loading and segment result formatting.
 - `src/depth`: future depth estimation module.
 - `src/bev`: future bird's-eye-view transformation module.
 - `src/mapping`: future semantic map construction module.
 - `src/potential`: future potential field generation module.
 - `src/planner`: future path planning module.
-- `src/utils`: reusable IO, video, and visualization helpers.
+- `src/utils`: reusable IO, video, mask, and visualization helpers.
