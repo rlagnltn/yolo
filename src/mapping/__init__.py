@@ -1,0 +1,1 @@
+"""Semantic mapping extension point."""

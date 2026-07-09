@@ -1,0 +1,1 @@
+"""Depth estimation extension point."""

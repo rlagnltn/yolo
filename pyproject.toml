@@ -1,0 +1,16 @@
+[project]
+name = "vision-potential-field"
+version = "0.1.0"
+description = "YOLO-based driving-video detection scaffold for potential field research."
+requires-python = ">=3.10"
+dependencies = [
+  "ultralytics",
+  "opencv-python",
+  "numpy",
+  "PyYAML",
+  "tqdm",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

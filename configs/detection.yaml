@@ -1,0 +1,11 @@
+model:
+  name: yolov8n.pt
+  confidence_threshold: 0.25
+  device: auto
+
+input:
+  source: datasets/raw/sample.mp4
+
+output:
+  detection_json: outputs/detections/detections.json
+  visualization_dir: outputs/visualizations

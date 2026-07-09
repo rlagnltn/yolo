@@ -1,0 +1,1 @@
+"""Path planning extension point."""
