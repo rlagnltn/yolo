@@ -60,3 +60,11 @@ depth_visualization:
   alpha: 0.45
   percentile_min: 2.0
   percentile_max: 98.0
+
+geometry:
+  enabled: false
+  camera_config: configs/camera.yaml
+  point_cloud_dir: outputs/perception/geometry/point_clouds
+  stride: 4
+  min_depth_m: 0.1
+  max_depth_m: 80.0

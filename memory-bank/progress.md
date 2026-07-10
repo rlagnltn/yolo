@@ -25,15 +25,16 @@
 - Added float32 NPY, uint16 PNG, color-map, overlay, and depth-statistics outputs.
 - Integrated optional depth and same-frame scene-class depth summaries into unified perception.
 - Added depth tests and verified the real metric model on CPU.
+- Added camera intrinsics handling and metric-depth 3D back-projection.
+- Added camera-coordinate point cloud NPZ outputs with optional semantic class IDs.
 
 ## In Progress
 
-- Real driving-video validation of scene segmentation, depth, and unified perception.
+- Real driving-video validation of scene segmentation, depth, geometry, and unified perception.
 
 ## Remaining
 
 - Run on a real sample driving video after the user places a file at `datasets/raw/sample.mp4` or passes another path with `--input`.
-- Add camera intrinsics and combine semantic labels/depth for 3D projection.
 - Implement BEV transformation.
 - Implement potential field and planner modules.
 - BEV, Potential Field, and Path Planning are not implemented yet.
@@ -43,7 +44,7 @@
 Run:
 
 ```bash
-python scripts/run_perception.py --input datasets/raw/sample.mp4 --enable-scene-segmentation --enable-depth --save-vis --max-frames 5
+python scripts/run_perception.py --input datasets/raw/sample.mp4 --enable-scene-segmentation --enable-depth --enable-geometry --save-vis --max-frames 5
 ```
 
 Then inspect segmentation JSON, mask images, and overlay frames.

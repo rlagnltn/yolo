@@ -25,6 +25,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--continue-on-error", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--enable-scene-segmentation", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--enable-depth", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--enable-geometry", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--camera-config")
+    parser.add_argument("--geometry-stride", type=int)
     return parser.parse_args()
 
 
@@ -71,10 +74,19 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
             "save_raw_depth": True, "save_depth_png": True,
             "save_depth_color_maps": True, "save_depth_visualizations": True,
         },
+        "geometry": {
+            "enabled": False,
+            "camera_config": "configs/camera.yaml",
+            "point_cloud_dir": "outputs/perception/geometry/point_clouds",
+            "stride": 4,
+            "min_depth_m": 0.1,
+            "max_depth_m": 80.0,
+        },
     }
     config_path = Path(args.config)
     config = _merge(defaults, load_yaml(config_path)) if config_path.exists() else defaults
     models, fusion, output, runtime = config["models"], config["fusion"], config["output"], config["runtime"]
+    geometry = config.get("geometry", {})
     instance_model = models.get("instance_segmentation", models.get("segmentation", {}))
     scene_model = models.get("scene_segmentation", {})
     depth_model = models.get("depth", {})
@@ -118,6 +130,14 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
         "depth_alpha": float(config.get("depth_visualization", {}).get("alpha", 0.45)),
         "depth_percentile_min": float(config.get("depth_visualization", {}).get("percentile_min", 2.0)),
         "depth_percentile_max": float(config.get("depth_visualization", {}).get("percentile_max", 98.0)),
+        "geometry_enabled": (
+            args.enable_geometry if args.enable_geometry is not None else bool(geometry.get("enabled", False))
+        ),
+        "camera_config": args.camera_config or geometry.get("camera_config", "configs/camera.yaml"),
+        "geometry_point_cloud_dir": geometry.get("point_cloud_dir", "outputs/perception/geometry/point_clouds"),
+        "geometry_stride": args.geometry_stride if args.geometry_stride is not None else int(geometry.get("stride", 4)),
+        "geometry_min_depth_m": geometry.get("min_depth_m", 0.1),
+        "geometry_max_depth_m": geometry.get("max_depth_m", 80.0),
         "device": args.device or models["device"],
         "iou_threshold": args.iou_threshold if args.iou_threshold is not None else float(fusion["iou_threshold"]),
         "require_same_class": bool(fusion["require_same_class"]),
@@ -162,6 +182,11 @@ def main() -> int:
                 settings["depth_model"], settings["device"],
                 settings["depth_min_m"], settings["depth_max_m"],
             )
+        geometry_intrinsics = {}
+        if settings["geometry_enabled"]:
+            from src.utils.io_utils import load_yaml
+
+            geometry_intrinsics = load_yaml(settings["camera_config"]).get("camera", {})
         pipeline = PerceptionPipeline(
             detector, segmenter,
             scene_segmenter=scene_segmenter,
@@ -198,6 +223,14 @@ def main() -> int:
                 "alpha": settings["depth_alpha"],
                 "percentile_min": settings["depth_percentile_min"],
                 "percentile_max": settings["depth_percentile_max"],
+            },
+            geometry_output={
+                "enabled": settings["geometry_enabled"],
+                "intrinsics": geometry_intrinsics,
+                "point_cloud_dir": settings["geometry_point_cloud_dir"],
+                "stride": settings["geometry_stride"],
+                "min_depth_m": settings["geometry_min_depth_m"],
+                "max_depth_m": settings["geometry_max_depth_m"],
             },
         )
         saved_path = save_json(result, settings["output_path"])

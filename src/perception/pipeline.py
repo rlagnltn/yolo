@@ -40,6 +40,7 @@ class PerceptionPipeline:
         save_masks: bool = True,
         scene_output: dict[str, Any] | None = None,
         depth_output: dict[str, Any] | None = None,
+        geometry_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         detections: list[dict[str, Any]] = []
         segments: list[dict[str, Any]] = []
@@ -100,12 +101,14 @@ class PerceptionPipeline:
                     raise
                 errors.append(f"scene_segmentation: {exc}")
         depth_result = None
+        depth_map = None
         if self.depth_estimator is not None:
             try:
                 from src.depth.output import build_depth_frame_result
                 from src.depth.postprocessing import calculate_depth_by_class
 
                 prediction = self.depth_estimator.predict(frame)
+                depth_map = prediction["depth_map"]
                 options = depth_output or {}
                 depth_result = build_depth_frame_result(
                     frame, prediction, frame_index, timestamp_sec,
@@ -140,8 +143,67 @@ class PerceptionPipeline:
             "fused_objects": fused_objects,
             "scene_segmentation": scene_result,
             "depth": depth_result,
+            "geometry": self._build_geometry_result(
+                depth_map, scene_class_map, frame_index, geometry_output, errors
+            ),
             "errors": errors,
         }
+
+    def _build_geometry_result(
+        self,
+        depth_map: Any | None,
+        scene_class_map: Any | None,
+        frame_index: int,
+        geometry_output: dict[str, Any] | None,
+        errors: list[str],
+    ) -> dict[str, Any] | None:
+        options = geometry_output or {}
+        if not options.get("enabled", False):
+            return None
+        if depth_map is None:
+            errors.append("geometry: depth must be enabled before back-projection.")
+            return None
+        try:
+            from src.geometry import CameraIntrinsics, attach_semantic_labels, backproject_depth, save_point_cloud_npz
+
+            intrinsics = CameraIntrinsics.from_dict(options.get("intrinsics", {}))
+            if tuple(depth_map.shape) != (intrinsics.height, intrinsics.width):
+                intrinsics = intrinsics.scaled_to(int(depth_map.shape[1]), int(depth_map.shape[0]))
+            stride = int(options.get("stride", 1))
+            min_depth_m = options.get("min_depth_m")
+            max_depth_m = options.get("max_depth_m")
+            cloud = backproject_depth(
+                depth_map, intrinsics,
+                stride=stride,
+                min_depth_m=min_depth_m,
+                max_depth_m=max_depth_m,
+            )
+            labels = None
+            if scene_class_map is not None:
+                labels = attach_semantic_labels(cloud["pixels_uv"], scene_class_map)
+            point_cloud_path = save_point_cloud_npz(
+                Path(options.get("point_cloud_dir", "outputs/perception/geometry/point_clouds"))
+                / f"frame_{frame_index:06d}.npz",
+                cloud["points_xyz"],
+                cloud["pixels_uv"],
+                cloud["depth_values"],
+                labels,
+            )
+            return {
+                "point_cloud_path": str(point_cloud_path),
+                "coordinate_frame": "camera",
+                "unit": "meter",
+                "point_count": int(cloud["points_xyz"].shape[0]),
+                "stride": stride,
+                "depth_range_m": [min_depth_m, max_depth_m],
+                "intrinsics": intrinsics.to_dict(),
+                "has_semantic_labels": labels is not None,
+            }
+        except Exception as exc:
+            if not self.continue_on_error:
+                raise
+            errors.append(f"geometry: {exc}")
+            return None
 
     def process_video(
         self,
@@ -154,6 +216,7 @@ class PerceptionPipeline:
         max_frames: int | None = None,
         scene_output: dict[str, Any] | None = None,
         depth_output: dict[str, Any] | None = None,
+        geometry_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         from src.utils.video_utils import get_video_info, iter_video_frames
         from src.utils.visualization import save_perception_overlay
@@ -169,6 +232,7 @@ class PerceptionPipeline:
                 mask_dir=mask_dir, save_masks=save_masks,
                 scene_output=scene_output,
                 depth_output=depth_output,
+                geometry_output=geometry_output,
             )
             frames.append(frame_result)
             if save_visualizations and visualization_dir is not None:

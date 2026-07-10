@@ -1,0 +1,12 @@
+camera:
+  fx: null
+  fy: null
+  cx: null
+  cy: null
+  width: null
+  height: null
+
+backprojection:
+  stride: 4
+  min_depth_m: 0.1
+  max_depth_m: 80.0

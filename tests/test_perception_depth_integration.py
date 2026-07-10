@@ -79,3 +79,39 @@ def test_depth_error_uses_existing_continue_policy(tmp_path):
     )
     assert result["depth"] is None
     assert result["errors"] == ["depth: depth failed"]
+
+
+def test_geometry_disabled_preserves_pipeline(tmp_path):
+    result = PerceptionPipeline(
+        EmptyDetector(), EmptySegmenter(), depth_estimator=MockDepthEstimator()
+    ).process_frame(
+        np.zeros((2, 2, 3), dtype=np.uint8), 0, depth_output=options(tmp_path)
+    )
+    assert result["geometry"] is None
+
+
+def test_geometry_uses_current_depth_and_semantic_class_map(tmp_path):
+    frame = np.zeros((2, 2, 3), dtype=np.uint8)
+    pipeline = PerceptionPipeline(
+        EmptyDetector(), EmptySegmenter(), scene_segmenter=MockScene(), depth_estimator=MockDepthEstimator()
+    )
+    result = pipeline.process_frame(
+        frame, 0,
+        scene_output={"class_map_dir": tmp_path, "color_map_dir": tmp_path,
+                      "visualization_dir": tmp_path, "region_dir": tmp_path,
+                      "save_class_maps": False, "save_color_maps": False, "save_regions": False},
+        depth_output=options(tmp_path),
+        geometry_output={
+            "enabled": True,
+            "point_cloud_dir": tmp_path,
+            "stride": 1,
+            "min_depth_m": 0.1,
+            "max_depth_m": 80.0,
+            "intrinsics": {"fx": 1, "fy": 1, "cx": 0, "cy": 0, "width": 2, "height": 2},
+        },
+    )
+    assert result["geometry"]["point_count"] == 4
+    assert result["geometry"]["has_semantic_labels"] is True
+    with np.load(result["geometry"]["point_cloud_path"]) as data:
+        assert set(data.files) == {"points_xyz", "pixels_uv", "depth_values", "semantic_labels"}
+        np.testing.assert_array_equal(data["semantic_labels"], [0, 0, 1, 1])

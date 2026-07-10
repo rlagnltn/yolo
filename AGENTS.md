@@ -22,6 +22,9 @@ Repository guidance for Codex and other coding agents.
 - Treat float32 NPY as the lossless source depth. uint16 PNG and color maps are derived artifacts.
 - Never store visualization-normalized depth as source depth or embed full depth arrays in JSON.
 - Initialize the depth model once, reuse the already-read frame, and validate depth/scene-map shapes before combining them.
+- Never guess camera intrinsics; require explicit calibration values before geometry back-projection.
+- Geometry must use in-memory depth and class maps from the current frame, not reload saved artifacts for computation.
+- Record geometry coordinate frame and units in metadata; do not conflate camera-coordinate point clouds with BEV.
 - Do not store raw mask arrays directly in JSON. Store mask images under `outputs/` and put only paths and summary values in JSON.
 - Keep generated output data out of Git. `outputs/` can become large quickly.
 - Preserve existing detection code unless a requested change specifically requires modifying it.

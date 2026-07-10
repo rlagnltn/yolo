@@ -15,9 +15,10 @@ The current implementation includes object, scene, and metric-depth perception:
 - Save frame-level segmentation records as JSON.
 - Optionally save bounding-box visualizations, segmentation masks, and overlay visualizations.
 - Estimate per-pixel outdoor metric depth and save lossless NPY, optional uint16 PNG, color maps, and overlays.
-- Combine scene labels and depth into same-frame class-level depth summaries.
+- Combine calibrated camera intrinsics and metric depth into camera-coordinate XYZ point clouds.
+- Optionally attach same-frame scene class IDs to generated 3D points.
 
-Camera geometry, BEV, mapping, potential field, and planner modules remain extension points.
+BEV, mapping, potential field, and planner modules remain extension points.
 
 ## Project Structure
 
@@ -314,6 +315,22 @@ Depth is disabled by default in unified perception, preserving prior behavior wi
 - JSON: paths, scale, units, validity statistics, percentiles, and optional scene-class summaries; never the full array.
 
 Monocular metric depth still has scale error and a domain gap on Korean roads, night, rain, glare, and cameras unlike Virtual KITTI. It does not provide camera intrinsics, 3D coordinates, safe clearance, or BEV by itself. Those require the next Camera Geometry and 3D Projection stage.
+
+## Camera Geometry and 3D Back-projection
+
+Back-projection requires real camera calibration. The project does not guess focal length or principal point. Put calibrated values in `configs/camera.yaml`:
+
+```yaml
+camera:
+  fx: 900.0
+  fy: 900.0
+  cx: 640.0
+  cy: 360.0
+  width: 1280
+  height: 720
+```
+
+With `--enable-depth --enable-geometry`, each valid depth pixel is projected as `X = (u - cx) * Z / fx`, `Y = (v - cy) * Z / fy`, `Z = depth`. The coordinate frame is camera based: X right, Y down, Z forward, unit meter. Point clouds are saved as `outputs/perception/geometry/point_clouds/frame_XXXXXX.npz` with `points_xyz`, `pixels_uv`, `depth_values`, and optional `semantic_labels`. JSON stores only metadata and paths, not raw point arrays. If calibration values remain `null`, geometry cannot run. This is still camera-coordinate 3D output, not BEV; the next stage is Semantic BEV Grid.
 
 ## Roadmap
 

@@ -6,6 +6,7 @@ from typing import TypedDict
 
 from src.scene_segmentation.schemas import SceneFrameRecord
 from src.depth.schemas import DepthFrameRecord
+from src.geometry.schemas import GeometryFrameRecord
 
 
 class DetectionRecord(TypedDict):
@@ -48,4 +49,5 @@ class FrameRecord(TypedDict):
     fused_objects: list[FusedObjectRecord]
     scene_segmentation: SceneFrameRecord | None
     depth: DepthFrameRecord | None
+    geometry: GeometryFrameRecord | None
     errors: list[str]
