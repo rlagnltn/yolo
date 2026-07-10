@@ -17,6 +17,11 @@ Repository guidance for Codex and other coding agents.
 - Prefer model-config `id2label` over guessed label IDs, and safely handle unknown IDs.
 - When scene schemas change, update tests, README, and memory-bank documents together.
 - Scene segmentation must retain a functional CPU execution path.
+- Keep metric-depth code under `src/depth/` and retain a functional CPU path.
+- Never infer or guess depth units; accept only models whose config explicitly reports metric depth.
+- Treat float32 NPY as the lossless source depth. uint16 PNG and color maps are derived artifacts.
+- Never store visualization-normalized depth as source depth or embed full depth arrays in JSON.
+- Initialize the depth model once, reuse the already-read frame, and validate depth/scene-map shapes before combining them.
 - Do not store raw mask arrays directly in JSON. Store mask images under `outputs/` and put only paths and summary values in JSON.
 - Keep generated output data out of Git. `outputs/` can become large quickly.
 - Preserve existing detection code unless a requested change specifically requires modifying it.

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 from src.scene_segmentation.schemas import SceneFrameRecord
+from src.depth.schemas import DepthFrameRecord
 
 
 class DetectionRecord(TypedDict):
@@ -46,4 +47,5 @@ class FrameRecord(TypedDict):
     segments: list[SegmentRecord]
     fused_objects: list[FusedObjectRecord]
     scene_segmentation: SceneFrameRecord | None
+    depth: DepthFrameRecord | None
     errors: list[str]

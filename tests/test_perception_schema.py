@@ -12,6 +12,8 @@ def test_perception_frame_schema_is_json_serializable():
         "detections": [],
         "segments": [],
         "fused_objects": [],
+        "scene_segmentation": None,
+        "depth": None,
         "errors": [],
     }
 

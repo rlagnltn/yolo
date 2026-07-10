@@ -6,7 +6,7 @@ YOLO-based research scaffold for detecting objects in driving videos, then exten
 
 The final target is a vision pipeline that accepts vehicle driving video, runs object detection, semantic segmentation, depth estimation, BEV transformation, semantic potential field generation, and path planning toward a safe target.
 
-The current implementation focuses on a working YOLO object-detection pipeline and a YOLO segmentation pipeline:
+The current implementation includes object, scene, and metric-depth perception:
 
 - Read an image or video input.
 - Run YOLO object detection with `ultralytics`.
@@ -14,8 +14,10 @@ The current implementation focuses on a working YOLO object-detection pipeline a
 - Save frame-level detections as JSON.
 - Save frame-level segmentation records as JSON.
 - Optionally save bounding-box visualizations, segmentation masks, and overlay visualizations.
+- Estimate per-pixel outdoor metric depth and save lossless NPY, optional uint16 PNG, color maps, and overlays.
+- Combine scene labels and depth into same-frame class-level depth summaries.
 
-Depth, BEV, mapping, potential field, and planner modules are included as extension points but are not implemented yet.
+Camera geometry, BEV, mapping, potential field, and planner modules remain extension points.
 
 ## Project Structure
 
@@ -195,7 +197,7 @@ Segmentation JSON follows this structure:
 }
 ```
 
-`yolov8n-seg.pt` is an instance-segmentation model, not a complete scene semantic-segmentation model. It can mask supported object classes such as cars, people, bicycles, motorcycles, buses, and trucks. It does not provide complete road, sidewalk, lane, building, sky, or vegetation regions. A separate scene semantic-segmentation backend is planned for the next stage. BEV transformation, potential field generation, and path planning remain out of scope here.
+`yolov8n-seg.pt` is an instance-segmentation model, not a complete scene semantic-segmentation model. It can mask supported object classes such as cars and people. The separately implemented SegFormer branch supplies full-scene labels. BEV transformation, potential-field generation, and path planning remain out of scope here.
 
 ## Run Unified Perception
 
@@ -290,7 +292,28 @@ Important limitations:
 - Results are 2D image-plane labels, not physical distances or BEV coordinates.
 - A drivable mask alone is not a guaranteed safe path and does not estimate lane center or travel direction.
 - No model training or fine-tuning is performed in this stage.
-- Monocular depth estimation is the next stage before semantic/depth projection into BEV.
+- These scene labels can now be paired with the implemented monocular metric-depth branch; camera geometry is still required before projection into BEV.
+
+## Monocular Metric Depth Estimation
+
+Relative depth preserves near/far ordering but has no guaranteed physical scale. Metric depth predicts physical distance; this stage uses meters. The configured name `depth-anything/Depth-Anything-V2-Metric-VKITTI-Small` resolves to the official Transformers-compatible `depth-anything/Depth-Anything-V2-Metric-Outdoor-Small-hf`. Its config declares `depth_estimation_type: metric` and an outdoor maximum depth of 80 meters. Units are taken from that model contract, never guessed from tensor values.
+
+Standalone and unified runs:
+
+```powershell
+python scripts/run_depth.py --input datasets/raw/sample.mp4 --save-raw --save-depth-png --save-color-maps --save-vis --max-frames 30
+python scripts/run_perception.py --input datasets/raw/sample.mp4 --enable-scene-segmentation --enable-depth --save-vis --max-frames 10
+```
+
+Depth is disabled by default in unified perception, preserving prior behavior with `"depth": null`. When enabled, one estimator receives the same already-read frame as the other branches. With scene segmentation enabled, shapes are validated before per-class depth summaries are computed.
+
+- `raw/frame_XXXXXX.npy`: authoritative lossless `float32` metric depth in meters.
+- `depth_maps/frame_XXXXXX.png`: optional `uint16`, where `value = meters × png_scale`; default scale 1000, zero invalid, overflow clipped.
+- `color_maps/frame_XXXXXX.png`: percentile-normalized visualization only.
+- `visualizations/frame_XXXXXX.png`: color depth blended over the frame.
+- JSON: paths, scale, units, validity statistics, percentiles, and optional scene-class summaries; never the full array.
+
+Monocular metric depth still has scale error and a domain gap on Korean roads, night, rain, glare, and cameras unlike Virtual KITTI. It does not provide camera intrinsics, 3D coordinates, safe clearance, or BEV by itself. Those require the next Camera Geometry and 3D Projection stage.
 
 ## Roadmap
 
@@ -298,7 +321,8 @@ Important limitations:
 2. YOLO instance segmentation module.
 3. Unified detection + instance-segmentation perception pipeline.
 4. Scene semantic segmentation for road, sidewalk, lanes, buildings, sky, and vegetation.
-5. Depth estimation module.
-6. BEV transformation and semantic map generation.
-7. Semantic potential field generation.
-8. Path planning and local-minima handling.
+5. Monocular metric depth estimation.
+6. Camera intrinsics and 3D projection.
+7. Semantic BEV transformation and map generation.
+8. Semantic potential field generation.
+9. Path planning and local-minima handling.

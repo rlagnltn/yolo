@@ -19,9 +19,11 @@ Driving Video
        -> YOLO Object Detection
        -> YOLO Instance Segmentation
        -> SegFormer Scene Semantic Segmentation
+       -> Depth Anything V2 Metric Depth Estimation
   -> IoU/Class-based Fusion
   -> Scene Class Map
   -> Drivable / Non-drivable Masks
+  -> Float Depth Map / Scene-Class Depth Statistics
   -> Unified Perception JSON
   -> Unified Visualization
 ```
@@ -32,7 +34,7 @@ Driving Video
 - `src/segmentation`: YOLO segmentation model loading and segment result formatting.
 - `src/perception`: shared-frame orchestration, schemas, and class/IoU fusion.
 - `src/scene_segmentation`: SegFormer inference, Cityscapes mapping, postprocessing, and scene artifacts.
-- `src/depth`: future depth estimation module.
+- `src/depth`: metric-depth inference, validation, statistics, serialization, and visualization.
 - `src/bev`: future bird's-eye-view transformation module.
 - `src/mapping`: future semantic map construction module.
 - `src/potential`: future potential field generation module.

@@ -1,0 +1,34 @@
+model:
+  name: depth-anything/Depth-Anything-V2-Metric-VKITTI-Small
+  device: auto
+  depth_type: metric
+  unit: meter
+
+input:
+  source: datasets/raw/sample.mp4
+
+output:
+  depth_json: outputs/depth/depth.json
+  raw_depth_dir: outputs/depth/raw
+  depth_png_dir: outputs/depth/depth_maps
+  color_map_dir: outputs/depth/color_maps
+  visualization_dir: outputs/depth/visualizations
+
+runtime:
+  max_frames: null
+  save_raw_depth: true
+  save_depth_png: true
+  save_color_maps: true
+  save_visualizations: true
+  continue_on_error: true
+
+depth:
+  min_depth_m: null
+  max_depth_m: null
+  png_scale: 1000.0
+  invalid_value: 0
+
+visualization:
+  alpha: 0.45
+  percentile_min: 2.0
+  percentile_max: 98.0

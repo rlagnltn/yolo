@@ -10,6 +10,11 @@ models:
   scene_segmentation:
     enabled: false
     name: nvidia/segformer-b0-finetuned-cityscapes-1024-1024
+  depth:
+    enabled: false
+    name: depth-anything/Depth-Anything-V2-Metric-VKITTI-Small
+    depth_type: metric
+    unit: meter
   device: auto
 
 fusion:
@@ -27,6 +32,11 @@ output:
     class_map_dir: outputs/perception/scene/class_maps
     color_map_dir: outputs/perception/scene/color_maps
     region_dir: outputs/perception/scene/regions
+  depth:
+    raw_depth_dir: outputs/perception/depth/raw
+    depth_png_dir: outputs/perception/depth/depth_maps
+    color_map_dir: outputs/perception/depth/color_maps
+    visualization_dir: outputs/perception/depth/visualizations
 
 runtime:
   max_frames: null
@@ -35,4 +45,18 @@ runtime:
   save_scene_class_maps: true
   save_scene_color_maps: true
   save_scene_regions: true
+  save_raw_depth: true
+  save_depth_png: true
+  save_depth_color_maps: true
+  save_depth_visualizations: true
   continue_on_error: true
+
+depth:
+  min_depth_m: null
+  max_depth_m: null
+  png_scale: 1000.0
+
+depth_visualization:
+  alpha: 0.45
+  percentile_min: 2.0
+  percentile_max: 98.0

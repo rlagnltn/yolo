@@ -18,9 +18,15 @@ Future replacements may include SegFormer, Mask2Former, DeepLabV3+, or BEV-aware
 
 The scene model is `nvidia/segformer-b0-finetuned-cityscapes-1024-1024`. SegFormer-B0 was selected for a lightweight first validation. Its model-config `id2label` is the source of truth. The scene branch is disabled by default in unified perception for backward compatibility and to avoid unrequested model downloads.
 
-Class maps are saved as single-channel PNGs, while JSON stores only paths and statistics. Only `road` is vehicle-drivable by default; `sidewalk` is not. Cityscapes domain gap must be considered for Korean roads and adverse conditions. Current outputs remain in the 2D image plane and contain no physical distance. The next stage will add monocular depth estimation.
+Class maps are saved as single-channel PNGs, while JSON stores only paths and statistics. Only `road` is vehicle-drivable by default; `sidewalk` is not. Cityscapes domain gap must be considered for Korean roads and adverse conditions. Scene labels remain in the 2D image plane; metric depth is available separately, while camera geometry and 3D projection are the next stage.
 
 ## Video Processing
+
+## Monocular Metric Depth
+
+The configured default `depth-anything/Depth-Anything-V2-Metric-VKITTI-Small` is the original checkpoint repository, so the loader resolves it to the official Transformers-compatible `depth-anything/Depth-Anything-V2-Metric-Outdoor-Small-hf`. Its config explicitly declares metric depth and `max_depth: 80`; JSON records the requested and loaded names.
+
+The authoritative output is float32 NPY in meters. uint16 PNG uses an explicit default scale of 1000, reserves zero for invalid pixels, and clips overflow. Percentile normalization is visualization-only. Raw arrays are not embedded in JSON. Depth is disabled by default in unified perception and shares its single-pass frame iterator when enabled.
 
 OpenCV handles image and video IO.
 

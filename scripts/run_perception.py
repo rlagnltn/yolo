@@ -24,6 +24,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--iou-threshold", type=float)
     parser.add_argument("--continue-on-error", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--enable-scene-segmentation", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--enable-depth", action=argparse.BooleanOptionalAction, default=None)
     return parser.parse_args()
 
 
@@ -42,6 +43,7 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
             "detection": {"name": "yolov8n.pt", "confidence_threshold": 0.25},
             "instance_segmentation": {"enabled": True, "name": "yolov8n-seg.pt", "confidence_threshold": 0.25},
             "scene_segmentation": {"enabled": False, "name": "nvidia/segformer-b0-finetuned-cityscapes-1024-1024"},
+            "depth": {"enabled": False, "name": "depth-anything/Depth-Anything-V2-Metric-VKITTI-Small", "depth_type": "metric", "unit": "meter"},
             "device": "auto",
         },
         "fusion": {"iou_threshold": 0.5, "require_same_class": True},
@@ -55,11 +57,19 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
                 "color_map_dir": "outputs/perception/scene/color_maps",
                 "region_dir": "outputs/perception/scene/regions",
             },
+            "depth": {
+                "raw_depth_dir": "outputs/perception/depth/raw",
+                "depth_png_dir": "outputs/perception/depth/depth_maps",
+                "color_map_dir": "outputs/perception/depth/color_maps",
+                "visualization_dir": "outputs/perception/depth/visualizations",
+            },
         },
         "runtime": {
             "max_frames": None, "save_masks": True, "save_visualizations": True,
             "save_scene_class_maps": True, "save_scene_color_maps": True,
             "save_scene_regions": True, "continue_on_error": True,
+            "save_raw_depth": True, "save_depth_png": True,
+            "save_depth_color_maps": True, "save_depth_visualizations": True,
         },
     }
     config_path = Path(args.config)
@@ -67,7 +77,9 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
     models, fusion, output, runtime = config["models"], config["fusion"], config["output"], config["runtime"]
     instance_model = models.get("instance_segmentation", models.get("segmentation", {}))
     scene_model = models.get("scene_segmentation", {})
+    depth_model = models.get("depth", {})
     scene_output = output.get("scene", {})
+    depth_output = output.get("depth", {})
     return {
         "input_path": args.input_path or config["input"]["source"],
         "output_path": args.output or output["perception_json"],
@@ -82,12 +94,30 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
             if args.enable_scene_segmentation is not None else bool(scene_model.get("enabled", False))
         ),
         "scene_model": scene_model.get("name", "nvidia/segformer-b0-finetuned-cityscapes-1024-1024"),
+        "depth_enabled": (
+            args.enable_depth if args.enable_depth is not None else bool(depth_model.get("enabled", False))
+        ),
+        "depth_model": depth_model.get("name", "depth-anything/Depth-Anything-V2-Metric-VKITTI-Small"),
         "scene_class_map_dir": scene_output.get("class_map_dir", "outputs/perception/scene/class_maps"),
         "scene_color_map_dir": scene_output.get("color_map_dir", "outputs/perception/scene/color_maps"),
         "scene_region_dir": scene_output.get("region_dir", "outputs/perception/scene/regions"),
         "save_scene_class_maps": bool(runtime.get("save_scene_class_maps", True)),
         "save_scene_color_maps": bool(runtime.get("save_scene_color_maps", True)),
         "save_scene_regions": bool(runtime.get("save_scene_regions", True)),
+        "depth_raw_dir": depth_output.get("raw_depth_dir", "outputs/perception/depth/raw"),
+        "depth_png_dir": depth_output.get("depth_png_dir", "outputs/perception/depth/depth_maps"),
+        "depth_color_map_dir": depth_output.get("color_map_dir", "outputs/perception/depth/color_maps"),
+        "depth_visualization_dir": depth_output.get("visualization_dir", "outputs/perception/depth/visualizations"),
+        "save_raw_depth": bool(runtime.get("save_raw_depth", True)),
+        "save_depth_png": bool(runtime.get("save_depth_png", True)),
+        "save_depth_color_maps": bool(runtime.get("save_depth_color_maps", True)),
+        "save_depth_visualizations": bool(runtime.get("save_depth_visualizations", True)),
+        "depth_png_scale": float(config.get("depth", {}).get("png_scale", 1000.0)),
+        "depth_min_m": config.get("depth", {}).get("min_depth_m"),
+        "depth_max_m": config.get("depth", {}).get("max_depth_m"),
+        "depth_alpha": float(config.get("depth_visualization", {}).get("alpha", 0.45)),
+        "depth_percentile_min": float(config.get("depth_visualization", {}).get("percentile_min", 2.0)),
+        "depth_percentile_max": float(config.get("depth_visualization", {}).get("percentile_max", 98.0)),
         "device": args.device or models["device"],
         "iou_threshold": args.iou_threshold if args.iou_threshold is not None else float(fusion["iou_threshold"]),
         "require_same_class": bool(fusion["require_same_class"]),
@@ -124,9 +154,18 @@ def main() -> int:
             from src.scene_segmentation import SceneSegmenter
 
             scene_segmenter = SceneSegmenter(settings["scene_model"], settings["device"])
+        depth_estimator = None
+        if settings["depth_enabled"]:
+            from src.depth import DepthEstimator
+
+            depth_estimator = DepthEstimator(
+                settings["depth_model"], settings["device"],
+                settings["depth_min_m"], settings["depth_max_m"],
+            )
         pipeline = PerceptionPipeline(
             detector, segmenter,
             scene_segmenter=scene_segmenter,
+            depth_estimator=depth_estimator,
             iou_threshold=settings["iou_threshold"],
             require_same_class=settings["require_same_class"],
             continue_on_error=settings["continue_on_error"],
@@ -145,6 +184,20 @@ def main() -> int:
                 "save_class_maps": settings["save_scene_class_maps"],
                 "save_color_maps": settings["save_scene_color_maps"],
                 "save_regions": settings["save_scene_regions"],
+            },
+            depth_output={
+                "raw_depth_dir": settings["depth_raw_dir"],
+                "depth_png_dir": settings["depth_png_dir"],
+                "color_map_dir": settings["depth_color_map_dir"],
+                "visualization_dir": settings["depth_visualization_dir"],
+                "save_raw_depth": settings["save_raw_depth"],
+                "save_depth_png": settings["save_depth_png"],
+                "save_color_maps": settings["save_depth_color_maps"],
+                "save_visualizations": settings["save_depth_visualizations"],
+                "png_scale": settings["depth_png_scale"],
+                "alpha": settings["depth_alpha"],
+                "percentile_min": settings["depth_percentile_min"],
+                "percentile_max": settings["depth_percentile_max"],
             },
         )
         saved_path = save_json(result, settings["output_path"])
