@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TypedDict
 
+from src.scene_segmentation.schemas import SceneFrameRecord
+
 
 class DetectionRecord(TypedDict):
     object_id: str
@@ -43,4 +45,5 @@ class FrameRecord(TypedDict):
     detections: list[DetectionRecord]
     segments: list[SegmentRecord]
     fused_objects: list[FusedObjectRecord]
+    scene_segmentation: SceneFrameRecord | None
     errors: list[str]

@@ -1,0 +1,38 @@
+model:
+  name: nvidia/segformer-b0-finetuned-cityscapes-1024-1024
+  device: auto
+
+input:
+  source: datasets/raw/sample.mp4
+
+output:
+  scene_json: outputs/scene_segmentation/scene_segmentation.json
+  class_map_dir: outputs/scene_segmentation/class_maps
+  color_map_dir: outputs/scene_segmentation/color_maps
+  visualization_dir: outputs/scene_segmentation/visualizations
+  region_dir: outputs/scene_segmentation/regions
+
+runtime:
+  max_frames: null
+  save_class_maps: true
+  save_color_maps: true
+  save_visualizations: true
+  save_regions: true
+  continue_on_error: true
+
+visualization:
+  alpha: 0.45
+
+regions:
+  drivable_classes:
+    - road
+  non_drivable_classes:
+    - sidewalk
+    - building
+    - wall
+    - fence
+    - pole
+    - traffic light
+    - traffic sign
+    - vegetation
+    - terrain

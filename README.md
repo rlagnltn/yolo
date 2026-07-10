@@ -251,6 +251,47 @@ The top-level JSON contains video metadata and frame records:
 
 The default fusion threshold is `0.5`. A detection and segment must share a class and meet the IoU threshold to become `matched`; otherwise both records remain available. Raw mask arrays are never embedded in JSON.
 
+## Scene Semantic Segmentation
+
+Instance segmentation separates supported object instances such as cars and people. Scene semantic segmentation instead assigns a class to every image pixel, including broad surfaces and background regions. This project uses `nvidia/segformer-b0-finetuned-cityscapes-1024-1024`, a lightweight SegFormer-B0 model fine-tuned for 19 Cityscapes classes:
+
+```text
+road, sidewalk, building, wall, fence, pole, traffic light, traffic sign,
+vegetation, terrain, sky, person, rider, car, truck, bus, train,
+motorcycle, bicycle
+```
+
+Install dependencies and run the standalone pipeline in PowerShell:
+
+```powershell
+pip install -r requirements.txt
+python scripts/run_scene_segmentation.py --input datasets/raw/sample.mp4 --save-vis --save-regions --max-frames 30
+```
+
+Enable it inside the unified perception pipeline with:
+
+```powershell
+python scripts/run_perception.py --input datasets/raw/sample.mp4 --enable-scene-segmentation --save-vis --max-frames 30
+```
+
+Scene segmentation is disabled by default in `configs/perception.yaml`, preserving the previous pipeline behavior and avoiding an automatic model download. Disabled unified-perception frames contain `"scene_segmentation": null`. Its outputs are distinct:
+
+- Class map: single-channel PNG whose pixel values are model class IDs; this is the machine-readable result.
+- Color map: BGR palette visualization of the class IDs.
+- Overlay: color map blended over the original frame.
+- Region masks: binary 0/255 PNGs for drivable and non-drivable pixels.
+- JSON: paths and pixel statistics only; raw class-map arrays are not embedded.
+
+The default driving-region policy treats only `road` as drivable. `sidewalk` is a pedestrian surface, not a vehicle-driving area. Buildings, walls, fences, poles, signs, vegetation, and terrain are non-drivable; dynamic object classes are also conservatively non-drivable. Sky and ungrouped pixels remain unknown/background rather than being silently treated as road.
+
+Important limitations:
+
+- Cityscapes differs from Korean roads, nighttime scenes, rain, and unusual road layouts, so domain gap can reduce accuracy.
+- Results are 2D image-plane labels, not physical distances or BEV coordinates.
+- A drivable mask alone is not a guaranteed safe path and does not estimate lane center or travel direction.
+- No model training or fine-tuning is performed in this stage.
+- Monocular depth estimation is the next stage before semantic/depth projection into BEV.
+
 ## Roadmap
 
 1. YOLO object detection for driving video.

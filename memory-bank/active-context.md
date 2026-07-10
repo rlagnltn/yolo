@@ -2,17 +2,17 @@
 
 ## Current Focus
 
-Detection + YOLO instance-segmentation result fusion.
+SegFormer-based scene semantic segmentation.
 
 ## Current Scope Boundary
 
-Object detection, YOLO instance segmentation, and their unified perception pipeline are implemented. Scene semantic segmentation, depth estimation, BEV transformation, potential-field generation, and path planning are intentionally not implemented in this step.
+Object detection, YOLO instance segmentation, unified perception, and SegFormer scene semantic segmentation are implemented. Depth estimation, BEV transformation, potential-field generation, and path planning are intentionally not implemented in this step.
 
 ## Next Work Order
 
-1. Validate unified perception with a real driving video.
-2. Next: add scene semantic segmentation for road, sidewalk, lanes, buildings, sky, and vegetation.
-3. Then: implement depth estimation and BEV coordinate transformation.
+1. Validate scene segmentation and unified perception with a real driving video.
+2. Next: implement monocular depth estimation.
+3. Then: combine semantics and depth for 3D projection and BEV generation.
 
 ## Implementation Notes
 

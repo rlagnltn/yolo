@@ -18,7 +18,10 @@ Driving Video
   -> Single Frame Iterator
        -> YOLO Object Detection
        -> YOLO Instance Segmentation
+       -> SegFormer Scene Semantic Segmentation
   -> IoU/Class-based Fusion
+  -> Scene Class Map
+  -> Drivable / Non-drivable Masks
   -> Unified Perception JSON
   -> Unified Visualization
 ```
@@ -28,6 +31,7 @@ Driving Video
 - `src/detection`: YOLO model loading and detection result formatting.
 - `src/segmentation`: YOLO segmentation model loading and segment result formatting.
 - `src/perception`: shared-frame orchestration, schemas, and class/IoU fusion.
+- `src/scene_segmentation`: SegFormer inference, Cityscapes mapping, postprocessing, and scene artifacts.
 - `src/depth`: future depth estimation module.
 - `src/bev`: future bird's-eye-view transformation module.
 - `src/mapping`: future semantic map construction module.

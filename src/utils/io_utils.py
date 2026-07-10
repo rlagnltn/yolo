@@ -37,3 +37,21 @@ def load_yaml(path: str | Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError(f"YAML config must be a mapping: {path}")
     return data
+
+
+def save_image(image: Any, output_path: str | Path) -> Path:
+    """Save an OpenCV-compatible image, creating its parent directory."""
+
+    import cv2
+
+    output_path = Path(output_path)
+    ensure_dir(output_path.parent)
+    extension = output_path.suffix or ".png"
+    ok, encoded = cv2.imencode(extension, image)
+    if not ok:
+        raise RuntimeError(f"Failed to encode image: {output_path}")
+    try:
+        output_path.write_bytes(encoded.tobytes())
+    except OSError as exc:
+        raise RuntimeError(f"Failed to write image: {output_path}") from exc
+    return output_path

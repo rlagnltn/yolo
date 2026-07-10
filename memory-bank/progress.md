@@ -18,16 +18,19 @@
 - Added a unified detection + instance-segmentation perception pipeline.
 - Added class-aware, one-to-one IoU fusion with matched and unmatched states.
 - Added unified JSON, mask, and visualization outputs under `outputs/perception/`.
+- Added SegFormer-B0 Cityscapes scene semantic segmentation.
+- Added class-ID maps, color maps, semantic overlays, and drivable/non-drivable masks.
+- Integrated optional scene segmentation into the single-pass perception pipeline.
 
 ## In Progress
 
-- Real driving-video validation of the unified perception pipeline.
+- Real driving-video validation of scene segmentation and unified perception.
 
 ## Remaining
 
 - Run on a real sample driving video after the user places a file at `datasets/raw/sample.mp4` or passes another path with `--input`.
-- Add scene semantic segmentation for road, sidewalk, lanes, buildings, sky, and vegetation.
-- Implement depth estimation.
+- Add monocular depth estimation.
+- Combine semantic labels and depth for 3D projection and BEV generation.
 - Implement BEV transformation.
 - Implement potential field and planner modules.
 - BEV, Potential Field, and Path Planning are not implemented yet.

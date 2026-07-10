@@ -1,10 +1,15 @@
 models:
   detection:
+    enabled: true
     name: yolov8n.pt
     confidence_threshold: 0.25
-  segmentation:
+  instance_segmentation:
+    enabled: true
     name: yolov8n-seg.pt
     confidence_threshold: 0.25
+  scene_segmentation:
+    enabled: false
+    name: nvidia/segformer-b0-finetuned-cityscapes-1024-1024
   device: auto
 
 fusion:
@@ -18,9 +23,16 @@ output:
   perception_json: outputs/perception/perception.json
   mask_dir: outputs/perception/masks
   visualization_dir: outputs/perception/visualizations
+  scene:
+    class_map_dir: outputs/perception/scene/class_maps
+    color_map_dir: outputs/perception/scene/color_maps
+    region_dir: outputs/perception/scene/regions
 
 runtime:
   max_frames: null
   save_masks: true
   save_visualizations: true
+  save_scene_class_maps: true
+  save_scene_color_maps: true
+  save_scene_regions: true
   continue_on_error: true

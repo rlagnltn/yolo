@@ -10,6 +10,13 @@ Repository guidance for Codex and other coding agents.
 - When the perception JSON schema changes, update its tests and README documentation together.
 - Describe YOLO segmentation as instance segmentation, not full-scene semantic segmentation.
 - After completing a pipeline stage, update the relevant memory-bank documents.
+- Keep scene semantic segmentation under `src/scene_segmentation/`; do not mix it with YOLO instance segmentation.
+- Initialize the scene model once and pass each already-read frame to it without another video pass.
+- Never store raw class-map arrays in JSON; distinguish class-ID maps from color visualizations.
+- Treat only `road` as vehicle-drivable by default; never classify `sidewalk` as vehicle-drivable.
+- Prefer model-config `id2label` over guessed label IDs, and safely handle unknown IDs.
+- When scene schemas change, update tests, README, and memory-bank documents together.
+- Scene segmentation must retain a functional CPU execution path.
 - Do not store raw mask arrays directly in JSON. Store mask images under `outputs/` and put only paths and summary values in JSON.
 - Keep generated output data out of Git. `outputs/` can become large quickly.
 - Preserve existing detection code unless a requested change specifically requires modifying it.
