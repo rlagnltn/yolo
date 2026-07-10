@@ -69,6 +69,7 @@ class YOLOSegmenter:
         frame_index: int = 0,
         mask_dir: str | Path | None = None,
         save_masks: bool = True,
+        mask_object_label: str = "obj",
     ) -> list[dict[str, Any]]:
         """Run segmentation on a BGR OpenCV frame."""
 
@@ -101,7 +102,9 @@ class YOLOSegmenter:
             output_mask_path: Path | None = None
 
             if save_masks and mask_dir is not None:
-                output_mask_path = build_mask_path(mask_dir, frame_index, object_index)
+                output_mask_path = build_mask_path(
+                    mask_dir, frame_index, object_index, mask_object_label
+                )
                 save_binary_mask(binary_mask, output_mask_path)
 
             segment = Segment(

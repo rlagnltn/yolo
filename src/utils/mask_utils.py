@@ -22,10 +22,15 @@ def mask_area(mask: Any) -> int:
         return int(sum(1 for row in mask for value in row if bool(value)))
 
 
-def build_mask_path(mask_dir: str | Path, frame_index: int, object_index: int) -> Path:
+def build_mask_path(
+    mask_dir: str | Path,
+    frame_index: int,
+    object_index: int,
+    object_label: str = "obj",
+) -> Path:
     """Create a stable mask filename for one segmented object."""
 
-    return Path(mask_dir) / f"frame_{frame_index:06d}_obj_{object_index:03d}.png"
+    return Path(mask_dir) / f"frame_{frame_index:06d}_{object_label}_{object_index:03d}.png"
 
 
 def save_binary_mask(mask: Any, output_path: str | Path) -> Path:

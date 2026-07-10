@@ -2,23 +2,21 @@
 
 ## Current Focus
 
-Vehicle driving-video based semantic segmentation.
+Detection + YOLO instance-segmentation result fusion.
 
 ## Current Scope Boundary
 
-Object detection and YOLO segmentation are implemented. Depth Estimation, BEV transformation, Potential Field generation, and Path Planning are intentionally not implemented in this step.
+Object detection, YOLO instance segmentation, and their unified perception pipeline are implemented. Scene semantic segmentation, depth estimation, BEV transformation, potential-field generation, and path planning are intentionally not implemented in this step.
 
 ## Next Work Order
 
-1. User places a driving video at `datasets/raw/sample.mp4` or passes another path with `--input`.
-2. Run YOLO segmentation and inspect `outputs/segmentations/segmentations.json`.
-3. Inspect binary masks in `outputs/segmentations/masks/`.
-4. Inspect overlay frames in `outputs/segmentations/visualizations/` when visualization saving is enabled.
-5. Next stage: integrate detection + segmentation results on a shared frame basis.
-6. Following stage: prepare BEV transformation inputs.
+1. Validate unified perception with a real driving video.
+2. Next: add scene semantic segmentation for road, sidewalk, lanes, buildings, sky, and vegetation.
+3. Then: implement depth estimation and BEV coordinate transformation.
 
 ## Implementation Notes
 
 Detection results use `bbox_xyxy` in `[x1, y1, x2, y2]` format.
-Segmentation results use `segments` with `bbox_xyxy`, `mask_area`, and `mask_path`.
+Instance-segmentation results use `segments` with `bbox_xyxy`, `mask_area`, and `mask_path`.
+Fusion uses same-class bbox IoU with a default threshold of 0.5 and preserves unmatched results.
 `datasets/raw/` is ignored by Git, so sample videos are kept local.

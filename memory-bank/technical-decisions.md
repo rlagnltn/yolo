@@ -10,13 +10,19 @@ The first detector uses the `ultralytics` YOLO package with `yolov8n.pt` as the 
 
 ## Segmentation Model
 
-The first segmentation implementation uses the `ultralytics` YOLO segmentation model with `yolov8n-seg.pt` as the default lightweight model. This keeps the environment close to the detection pipeline and enables quick mask output validation before introducing heavier segmentation frameworks.
+The first segmentation implementation uses the `ultralytics` YOLO instance-segmentation model with `yolov8n-seg.pt` as the default lightweight model. It produces masks for supported object instances and does not replace full-scene semantic segmentation.
 
 Future replacements may include SegFormer, Mask2Former, DeepLabV3+, or BEV-aware models when segmentation quality and model comparison become the active task.
 
 ## Video Processing
 
 OpenCV handles image and video IO.
+
+The unified pipeline iterates over the video once and sends each frame to both models. Each model is initialized once before processing begins.
+
+## Perception Fusion
+
+Detection and instance-segmentation records are matched by compatible class and bbox IoU, using a default threshold of 0.5. Greedy highest-IoU matching is one-to-one. Unmatched records are retained as `detection_only` and `segmentation_only`.
 
 ## Output Format
 

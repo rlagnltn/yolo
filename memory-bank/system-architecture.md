@@ -15,17 +15,19 @@
 
 ```text
 Driving Video
-  -> Frame Extraction
-  -> YOLO Object Detection
-  -> YOLO Segmentation
-  -> Detection/Segmentation JSON
-  -> Visualization Output
+  -> Single Frame Iterator
+       -> YOLO Object Detection
+       -> YOLO Instance Segmentation
+  -> IoU/Class-based Fusion
+  -> Unified Perception JSON
+  -> Unified Visualization
 ```
 
 ## Module Responsibilities
 
 - `src/detection`: YOLO model loading and detection result formatting.
 - `src/segmentation`: YOLO segmentation model loading and segment result formatting.
+- `src/perception`: shared-frame orchestration, schemas, and class/IoU fusion.
 - `src/depth`: future depth estimation module.
 - `src/bev`: future bird's-eye-view transformation module.
 - `src/mapping`: future semantic map construction module.
