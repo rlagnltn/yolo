@@ -1,0 +1,39 @@
+occupancy:
+  unknown_value: -1
+  free_value: 0
+  occupied_value: 100
+
+cost:
+  free_cost: 0.0
+  occupied_cost: 1.0
+  unknown_policy: nan
+
+semantic_costs:
+  road: 0.0
+  sidewalk: 1.0
+  building: 1.0
+  wall: 1.0
+  fence: 1.0
+  vegetation: 1.0
+  terrain: 1.0
+  person: 1.0
+  car: 1.0
+
+inflation:
+  enabled: true
+  radius_m: 1.0
+  decay: linear
+
+output:
+  occupancy_dir: outputs/mapping/occupancy
+  cost_grid_dir: outputs/mapping/cost_grids
+  inflated_cost_dir: outputs/mapping/inflated_cost_grids
+  visualization_dir: outputs/mapping/visualizations
+
+runtime:
+  save_occupancy_npy: true
+  save_occupancy_png: true
+  save_cost_npy: true
+  save_cost_png: true
+  save_inflated_cost: true
+  save_visualizations: true

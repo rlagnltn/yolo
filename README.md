@@ -336,6 +336,10 @@ With `--enable-depth --enable-geometry`, each valid depth pixel is projected as 
 
 `--enable-bev` projects current-frame camera-coordinate XYZ points onto the X-Z plane. X is left/right, Z is forward, and `configs/bev.yaml` controls grid range and `resolution_m`; the default is X `[-20, 20]`, Z `[0, 80]`, at `0.2 m/cell`. Semantic labels produce a class-ID grid, while region masks derive drivable/non-drivable/unknown cells from the existing scene class mapping. Conflicts use the nearest point by Euclidean distance with point-index tie break. This is camera-centric X-Z projection, not world-coordinate or calibrated ground-plane BEV: pitch, roll, camera height, and extrinsics are not applied. Drivable masks are semantic projections only and do not guarantee a safe path. The next stage is Occupancy/Cost Grid.
 
+## Semantic Occupancy and Cost Grid
+
+`--enable-mapping` converts the in-memory Semantic BEV into `UNKNOWN=-1`, `FREE=0`, and `OCCUPIED=100`: road alone is free by default, while sidewalk and static/dynamic obstacles are occupied; unobserved, sky, and unmapped cells remain unknown. Traversability costs use float32 values from 0 to 1 with unknown stored as NaN. Linear obstacle inflation uses a meter-valued radius (`1.0 m` by default). NPY files are computation sources; PNG files are visual encodings only (occupancy: unknown 127, free 255, occupied 0). This output is not yet a Potential Field.
+
 ## Roadmap
 
 1. YOLO object detection for driving video.

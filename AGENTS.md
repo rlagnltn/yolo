@@ -36,3 +36,24 @@ Repository guidance for Codex and other coding agents.
 - Use clear file and function names. Prefer small modules with explicit responsibilities.
 - After meaningful changes, update `README.md` and the relevant `memory-bank` documents.
 - Keep runnable commands and verification results easy to find.
+
+## Efficient Task Execution
+
+Optimization of repeated commands, repository reads, logs, and token usage is the first priority unless it conflicts with correctness or an explicit user instruction.
+
+- Start new work with one `git status --short`; do not run `git log` or revalidate completed features unless explicitly requested.
+- Read only user-specified files and the code immediately connected to the functions being changed.
+- Do not repeat the same file read, command, or successful test within one task.
+- Do not output full files, repository trees, diffs, or successful test logs.
+- Use `rg` to locate only required symbols and configuration keys.
+- Reuse existing APIs, configuration structures, and test patterns after the smallest necessary inspection.
+- Validate once in this order: compile, CLI smoke test, then the full test suite.
+- On failure, inspect only the first failure and its relevant traceback, then rerun only the affected test.
+- After targeted tests pass, run the full test suite only once at the end.
+- Run model inference, video processing, or large artifact generation only when explicitly requested.
+- Keep progress updates limited to state changes and failure causes; keep final reports limited to results.
+- Record only the commit hash, concise test result, and push status after completion.
+- Do not classify an observed BEV cell as occupied without semantic policy, or convert unknown cells to free.
+- Keep occupancy NPY state values distinct from PNG display encoding; use cost-grid NPY for downstream computation.
+- Build mapping directly from the current frame's in-memory BEV arrays, never by reloading saved BEV artifacts.
+- Configure obstacle inflation radius in meters.

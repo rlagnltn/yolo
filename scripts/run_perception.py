@@ -30,6 +30,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--geometry-stride", type=int)
     parser.add_argument("--enable-bev", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--bev-config")
+    parser.add_argument("--enable-mapping", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--mapping-config")
     return parser.parse_args()
 
 
@@ -94,12 +96,23 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
                 "visualization_dir": "outputs/perception/bev/visualizations",
             },
         },
+        "mapping": {
+            "enabled": False,
+            "config": "configs/mapping.yaml",
+            "output": {
+                "occupancy_dir": "outputs/perception/mapping/occupancy",
+                "cost_grid_dir": "outputs/perception/mapping/cost_grids",
+                "inflated_cost_dir": "outputs/perception/mapping/inflated_cost_grids",
+                "visualization_dir": "outputs/perception/mapping/visualizations",
+            },
+        },
     }
     config_path = Path(args.config)
     config = _merge(defaults, load_yaml(config_path)) if config_path.exists() else defaults
     models, fusion, output, runtime = config["models"], config["fusion"], config["output"], config["runtime"]
     geometry = config.get("geometry", {})
     bev_config = config.get("bev", {})
+    mapping_config = config.get("mapping", {})
     instance_model = models.get("instance_segmentation", models.get("segmentation", {}))
     scene_model = models.get("scene_segmentation", {})
     depth_model = models.get("depth", {})
@@ -156,6 +169,11 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
         ),
         "bev_config": args.bev_config or bev_config.get("config", "configs/bev.yaml"),
         "bev_output": bev_config.get("output", {}),
+        "mapping_enabled": (
+            args.enable_mapping if args.enable_mapping is not None else bool(mapping_config.get("enabled", False))
+        ),
+        "mapping_config": args.mapping_config or mapping_config.get("config", "configs/mapping.yaml"),
+        "mapping_output": mapping_config.get("output", {}),
         "device": args.device or models["device"],
         "iou_threshold": args.iou_threshold if args.iou_threshold is not None else float(fusion["iou_threshold"]),
         "require_same_class": bool(fusion["require_same_class"]),
@@ -218,6 +236,17 @@ def main() -> int:
                 **loaded_bev.get("runtime", {}),
                 **settings["bev_output"],
             }
+        mapping_settings = {}
+        if settings["mapping_enabled"]:
+            from src.utils.io_utils import load_yaml
+
+            loaded_mapping = load_yaml(settings["mapping_config"])
+            mapping_settings = {
+                "enabled": True,
+                "config": loaded_mapping,
+                **loaded_mapping.get("runtime", {}),
+                **settings["mapping_output"],
+            }
         pipeline = PerceptionPipeline(
             detector, segmenter,
             scene_segmenter=scene_segmenter,
@@ -264,6 +293,7 @@ def main() -> int:
                 "max_depth_m": settings["geometry_max_depth_m"],
             },
             bev_output=bev_settings or {"enabled": False},
+            mapping_output=mapping_settings or {"enabled": False},
         )
         saved_path = save_json(result, settings["output_path"])
         print(f"Saved perception JSON: {saved_path}")

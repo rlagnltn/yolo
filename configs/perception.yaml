@@ -77,3 +77,12 @@ bev:
     drivable_grid_dir: outputs/perception/bev/drivable
     non_drivable_grid_dir: outputs/perception/bev/non_drivable
     visualization_dir: outputs/perception/bev/visualizations
+
+mapping:
+  enabled: false
+  config: configs/mapping.yaml
+  output:
+    occupancy_dir: outputs/perception/mapping/occupancy
+    cost_grid_dir: outputs/perception/mapping/cost_grids
+    inflated_cost_dir: outputs/perception/mapping/inflated_cost_grids
+    visualization_dir: outputs/perception/mapping/visualizations

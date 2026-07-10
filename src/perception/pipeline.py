@@ -42,6 +42,7 @@ class PerceptionPipeline:
         depth_output: dict[str, Any] | None = None,
         geometry_output: dict[str, Any] | None = None,
         bev_output: dict[str, Any] | None = None,
+        mapping_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         detections: list[dict[str, Any]] = []
         segments: list[dict[str, Any]] = []
@@ -137,8 +138,11 @@ class PerceptionPipeline:
         geometry_result, geometry_cloud, semantic_labels = self._build_geometry_result(
             depth_map, scene_class_map, frame_index, geometry_output, errors
         )
-        bev_result = self._build_bev_result(
+        bev_result, bev_grid = self._build_bev_result(
             geometry_cloud, semantic_labels, frame_index, bev_output, errors
+        )
+        mapping_result = self._build_mapping_result(
+            bev_grid, frame_index, mapping_output, errors
         )
         return {
             "frame_index": frame_index,
@@ -152,6 +156,7 @@ class PerceptionPipeline:
             "depth": depth_result,
             "geometry": geometry_result,
             "bev": bev_result,
+            "mapping": mapping_result,
             "errors": errors,
         }
 
@@ -218,13 +223,13 @@ class PerceptionPipeline:
         frame_index: int,
         bev_output: dict[str, Any] | None,
         errors: list[str],
-    ) -> dict[str, Any] | None:
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
         options = bev_output or {}
         if not options.get("enabled", False):
-            return None
+            return None, None
         if geometry_cloud is None:
             errors.append("bev: geometry must be enabled before BEV generation.")
-            return None
+            return None, None
         try:
             from src.bev import BEVConfig, rasterize_observation_bev, rasterize_semantic_bev, save_bev_frame_result
 
@@ -237,7 +242,7 @@ class PerceptionPipeline:
                 )
             else:
                 bev = rasterize_observation_bev(geometry_cloud["points_xyz"], config)
-            return save_bev_frame_result(
+            metadata = save_bev_frame_result(
                 frame_index, bev, config,
                 id2label=options.get("id2label"),
                 class_grid_dir=options.get("class_grid_dir", "outputs/perception/bev/class_grids"),
@@ -251,10 +256,73 @@ class PerceptionPipeline:
                 conflict_policy=conflict_policy,
                 has_semantic_labels=has_labels,
             )
+            memory_grid = {
+                **bev,
+                "config": config,
+                "id2label": options.get("id2label"),
+                "has_semantic_labels": has_labels,
+            }
+            return metadata, memory_grid
         except Exception as exc:
             if not self.continue_on_error:
                 raise
             errors.append(f"bev: {exc}")
+            return None, None
+
+    def _build_mapping_result(
+        self,
+        bev_grid: dict[str, Any] | None,
+        frame_index: int,
+        mapping_output: dict[str, Any] | None,
+        errors: list[str],
+    ) -> dict[str, Any] | None:
+        options = mapping_output or {}
+        if not options.get("enabled", False):
+            return None
+        if bev_grid is None:
+            errors.append("mapping: semantic BEV must be enabled before mapping.")
+            return None
+        if not bev_grid.get("has_semantic_labels") or "class_grid" not in bev_grid:
+            errors.append("mapping: semantic labels are required for semantic occupancy generation.")
+            return None
+        try:
+            from src.mapping import (
+                MappingConfig, create_semantic_cost_grid, create_semantic_occupancy_grid,
+                inflate_cost_grid, save_mapping_frame_result,
+            )
+
+            config = MappingConfig.from_dict(options.get("config", {}))
+            occupancy = create_semantic_occupancy_grid(
+                bev_grid["class_grid"], bev_grid["observed_mask"], bev_grid.get("id2label") or {}, config
+            )
+            cost_grid = create_semantic_cost_grid(
+                bev_grid["class_grid"], bev_grid["observed_mask"], bev_grid.get("id2label") or {}, config
+            )
+            inflated = (
+                inflate_cost_grid(
+                    cost_grid, occupancy["occupied_mask"], bev_grid["config"].resolution_m,
+                    config.inflation_radius_m, config.inflation_decay,
+                ) if config.inflation_enabled else cost_grid.copy()
+            )
+            return save_mapping_frame_result(
+                frame_index, occupancy, cost_grid, inflated,
+                resolution_m=bev_grid["config"].resolution_m,
+                config=config,
+                occupancy_dir=options.get("occupancy_dir", "outputs/perception/mapping/occupancy"),
+                cost_grid_dir=options.get("cost_grid_dir", "outputs/perception/mapping/cost_grids"),
+                inflated_cost_dir=options.get("inflated_cost_dir", "outputs/perception/mapping/inflated_cost_grids"),
+                visualization_dir=options.get("visualization_dir", "outputs/perception/mapping/visualizations"),
+                save_occupancy_npy=options.get("save_occupancy_npy", True),
+                save_occupancy_png=options.get("save_occupancy_png", True),
+                save_cost_npy=options.get("save_cost_npy", True),
+                save_cost_png=options.get("save_cost_png", True),
+                save_inflated_cost=options.get("save_inflated_cost", True),
+                save_visualizations=options.get("save_visualizations", True),
+            )
+        except Exception as exc:
+            if not self.continue_on_error:
+                raise
+            errors.append(f"mapping: {exc}")
             return None
 
     def process_video(
@@ -270,6 +338,7 @@ class PerceptionPipeline:
         depth_output: dict[str, Any] | None = None,
         geometry_output: dict[str, Any] | None = None,
         bev_output: dict[str, Any] | None = None,
+        mapping_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         from src.utils.video_utils import get_video_info, iter_video_frames
         from src.utils.visualization import save_perception_overlay
@@ -287,6 +356,7 @@ class PerceptionPipeline:
                 depth_output=depth_output,
                 geometry_output=geometry_output,
                 bev_output=bev_output,
+                mapping_output=mapping_output,
             )
             frames.append(frame_result)
             if save_visualizations and visualization_dir is not None:

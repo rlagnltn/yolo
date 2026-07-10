@@ -28,16 +28,17 @@
 - Added camera intrinsics handling and metric-depth 3D back-projection.
 - Added camera-coordinate point cloud NPZ outputs with optional semantic class IDs.
 - Added camera-centric Semantic BEV Grid generation.
+- Added Semantic Occupancy / Traversability Cost Grid generation and metric obstacle inflation.
 
 ## In Progress
 
-- Semantic Occupancy / Cost Grid.
+- Goal-conditioned Potential Field.
 
 ## Remaining
 
 - Run on a real sample driving video after the user places a file at `datasets/raw/sample.mp4` or passes another path with `--input`.
 - Implement potential field and planner modules.
-- BEV, Potential Field, and Path Planning are not implemented yet.
+- Potential Field and Path Planning are not implemented yet.
 
 ## Next Milestone
 

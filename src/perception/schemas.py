@@ -8,6 +8,7 @@ from src.scene_segmentation.schemas import SceneFrameRecord
 from src.depth.schemas import DepthFrameRecord
 from src.geometry.schemas import GeometryFrameRecord
 from src.bev.schemas import BEVFrameRecord
+from src.mapping.schemas import MappingFrameRecord
 
 
 class DetectionRecord(TypedDict):
@@ -52,4 +53,5 @@ class FrameRecord(TypedDict):
     depth: DepthFrameRecord | None
     geometry: GeometryFrameRecord | None
     bev: BEVFrameRecord | None
+    mapping: MappingFrameRecord | None
     errors: list[str]
