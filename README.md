@@ -332,6 +332,10 @@ camera:
 
 With `--enable-depth --enable-geometry`, each valid depth pixel is projected as `X = (u - cx) * Z / fx`, `Y = (v - cy) * Z / fy`, `Z = depth`. The coordinate frame is camera based: X right, Y down, Z forward, unit meter. Point clouds are saved as `outputs/perception/geometry/point_clouds/frame_XXXXXX.npz` with `points_xyz`, `pixels_uv`, `depth_values`, and optional `semantic_labels`. JSON stores only metadata and paths, not raw point arrays. If calibration values remain `null`, geometry cannot run. This is still camera-coordinate 3D output, not BEV; the next stage is Semantic BEV Grid.
 
+## Camera-centric Semantic BEV Grid
+
+`--enable-bev` projects current-frame camera-coordinate XYZ points onto the X-Z plane. X is left/right, Z is forward, and `configs/bev.yaml` controls grid range and `resolution_m`; the default is X `[-20, 20]`, Z `[0, 80]`, at `0.2 m/cell`. Semantic labels produce a class-ID grid, while region masks derive drivable/non-drivable/unknown cells from the existing scene class mapping. Conflicts use the nearest point by Euclidean distance with point-index tie break. This is camera-centric X-Z projection, not world-coordinate or calibrated ground-plane BEV: pitch, roll, camera height, and extrinsics are not applied. Drivable masks are semantic projections only and do not guarantee a safe path. The next stage is Occupancy/Cost Grid.
+
 ## Roadmap
 
 1. YOLO object detection for driving video.

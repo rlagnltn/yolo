@@ -41,6 +41,7 @@ class PerceptionPipeline:
         scene_output: dict[str, Any] | None = None,
         depth_output: dict[str, Any] | None = None,
         geometry_output: dict[str, Any] | None = None,
+        bev_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         detections: list[dict[str, Any]] = []
         segments: list[dict[str, Any]] = []
@@ -133,6 +134,12 @@ class PerceptionPipeline:
                 if not self.continue_on_error:
                     raise
                 errors.append(f"depth: {exc}")
+        geometry_result, geometry_cloud, semantic_labels = self._build_geometry_result(
+            depth_map, scene_class_map, frame_index, geometry_output, errors
+        )
+        bev_result = self._build_bev_result(
+            geometry_cloud, semantic_labels, frame_index, bev_output, errors
+        )
         return {
             "frame_index": frame_index,
             "timestamp_sec": float(timestamp_sec),
@@ -143,9 +150,8 @@ class PerceptionPipeline:
             "fused_objects": fused_objects,
             "scene_segmentation": scene_result,
             "depth": depth_result,
-            "geometry": self._build_geometry_result(
-                depth_map, scene_class_map, frame_index, geometry_output, errors
-            ),
+            "geometry": geometry_result,
+            "bev": bev_result,
             "errors": errors,
         }
 
@@ -156,13 +162,13 @@ class PerceptionPipeline:
         frame_index: int,
         geometry_output: dict[str, Any] | None,
         errors: list[str],
-    ) -> dict[str, Any] | None:
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, Any | None]:
         options = geometry_output or {}
         if not options.get("enabled", False):
-            return None
+            return None, None, None
         if depth_map is None:
             errors.append("geometry: depth must be enabled before back-projection.")
-            return None
+            return None, None, None
         try:
             from src.geometry import CameraIntrinsics, attach_semantic_labels, backproject_depth, save_point_cloud_npz
 
@@ -198,11 +204,57 @@ class PerceptionPipeline:
                 "depth_range_m": [min_depth_m, max_depth_m],
                 "intrinsics": intrinsics.to_dict(),
                 "has_semantic_labels": labels is not None,
-            }
+            }, cloud, labels
         except Exception as exc:
             if not self.continue_on_error:
                 raise
             errors.append(f"geometry: {exc}")
+            return None, None, None
+
+    def _build_bev_result(
+        self,
+        geometry_cloud: dict[str, Any] | None,
+        semantic_labels: Any | None,
+        frame_index: int,
+        bev_output: dict[str, Any] | None,
+        errors: list[str],
+    ) -> dict[str, Any] | None:
+        options = bev_output or {}
+        if not options.get("enabled", False):
+            return None
+        if geometry_cloud is None:
+            errors.append("bev: geometry must be enabled before BEV generation.")
+            return None
+        try:
+            from src.bev import BEVConfig, rasterize_observation_bev, rasterize_semantic_bev, save_bev_frame_result
+
+            config = BEVConfig.from_dict(options.get("config", {}))
+            conflict_policy = options.get("conflict_policy", "nearest")
+            has_labels = semantic_labels is not None
+            if has_labels:
+                bev = rasterize_semantic_bev(
+                    geometry_cloud["points_xyz"], semantic_labels, config, conflict_policy
+                )
+            else:
+                bev = rasterize_observation_bev(geometry_cloud["points_xyz"], config)
+            return save_bev_frame_result(
+                frame_index, bev, config,
+                id2label=options.get("id2label"),
+                class_grid_dir=options.get("class_grid_dir", "outputs/perception/bev/class_grids"),
+                drivable_grid_dir=options.get("drivable_grid_dir", "outputs/perception/bev/drivable"),
+                non_drivable_grid_dir=options.get("non_drivable_grid_dir", "outputs/perception/bev/non_drivable"),
+                visualization_dir=options.get("visualization_dir", "outputs/perception/bev/visualizations"),
+                save_class_grid_npy=options.get("save_class_grid_npy", True),
+                save_class_grid_png=options.get("save_class_grid_png", True),
+                save_region_masks=options.get("save_region_masks", True),
+                save_visualizations=options.get("save_visualizations", True),
+                conflict_policy=conflict_policy,
+                has_semantic_labels=has_labels,
+            )
+        except Exception as exc:
+            if not self.continue_on_error:
+                raise
+            errors.append(f"bev: {exc}")
             return None
 
     def process_video(
@@ -217,6 +269,7 @@ class PerceptionPipeline:
         scene_output: dict[str, Any] | None = None,
         depth_output: dict[str, Any] | None = None,
         geometry_output: dict[str, Any] | None = None,
+        bev_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         from src.utils.video_utils import get_video_info, iter_video_frames
         from src.utils.visualization import save_perception_overlay
@@ -233,6 +286,7 @@ class PerceptionPipeline:
                 scene_output=scene_output,
                 depth_output=depth_output,
                 geometry_output=geometry_output,
+                bev_output=bev_output,
             )
             frames.append(frame_result)
             if save_visualizations and visualization_dir is not None:

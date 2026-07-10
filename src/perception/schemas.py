@@ -7,6 +7,7 @@ from typing import TypedDict
 from src.scene_segmentation.schemas import SceneFrameRecord
 from src.depth.schemas import DepthFrameRecord
 from src.geometry.schemas import GeometryFrameRecord
+from src.bev.schemas import BEVFrameRecord
 
 
 class DetectionRecord(TypedDict):
@@ -50,4 +51,5 @@ class FrameRecord(TypedDict):
     scene_segmentation: SceneFrameRecord | None
     depth: DepthFrameRecord | None
     geometry: GeometryFrameRecord | None
+    bev: BEVFrameRecord | None
     errors: list[str]

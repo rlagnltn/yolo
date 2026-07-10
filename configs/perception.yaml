@@ -68,3 +68,12 @@ geometry:
   stride: 4
   min_depth_m: 0.1
   max_depth_m: 80.0
+
+bev:
+  enabled: false
+  config: configs/bev.yaml
+  output:
+    class_grid_dir: outputs/perception/bev/class_grids
+    drivable_grid_dir: outputs/perception/bev/drivable
+    non_drivable_grid_dir: outputs/perception/bev/non_drivable
+    visualization_dir: outputs/perception/bev/visualizations

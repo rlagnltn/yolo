@@ -2,17 +2,17 @@
 
 ## Current Focus
 
-Camera intrinsics and 3D back-projection are implemented; the next focus is semantic BEV grid construction.
+Camera-centric Semantic BEV Grid is implemented; the next focus is Semantic Occupancy / Cost Grid.
 
 ## Current Scope Boundary
 
-Object detection, YOLO instance segmentation, SegFormer scene segmentation, monocular metric depth, camera intrinsics, 3D back-projection, and unified perception are implemented. BEV, occupancy, potential fields, planning, temporal smoothing, and fine-tuning are not implemented.
+Object detection, YOLO instance segmentation, SegFormer scene segmentation, monocular metric depth, camera intrinsics, 3D back-projection, camera-centric semantic BEV, and unified perception are implemented. Occupancy, potential fields, planning, temporal smoothing, and fine-tuning are not implemented.
 
 ## Next Work Order
 
-1. Validate scene segmentation, depth, geometry, and unified perception with a real driving video and real calibration.
-2. Build a semantic BEV grid.
-3. Add occupancy and planning stages later.
+1. Build Semantic Occupancy / Cost Grid.
+2. Add Potential Field.
+3. Add planning stages later.
 
 ## Implementation Notes
 

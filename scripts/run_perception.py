@@ -28,6 +28,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--enable-geometry", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--camera-config")
     parser.add_argument("--geometry-stride", type=int)
+    parser.add_argument("--enable-bev", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--bev-config")
     return parser.parse_args()
 
 
@@ -82,11 +84,22 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
             "min_depth_m": 0.1,
             "max_depth_m": 80.0,
         },
+        "bev": {
+            "enabled": False,
+            "config": "configs/bev.yaml",
+            "output": {
+                "class_grid_dir": "outputs/perception/bev/class_grids",
+                "drivable_grid_dir": "outputs/perception/bev/drivable",
+                "non_drivable_grid_dir": "outputs/perception/bev/non_drivable",
+                "visualization_dir": "outputs/perception/bev/visualizations",
+            },
+        },
     }
     config_path = Path(args.config)
     config = _merge(defaults, load_yaml(config_path)) if config_path.exists() else defaults
     models, fusion, output, runtime = config["models"], config["fusion"], config["output"], config["runtime"]
     geometry = config.get("geometry", {})
+    bev_config = config.get("bev", {})
     instance_model = models.get("instance_segmentation", models.get("segmentation", {}))
     scene_model = models.get("scene_segmentation", {})
     depth_model = models.get("depth", {})
@@ -138,6 +151,11 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
         "geometry_stride": args.geometry_stride if args.geometry_stride is not None else int(geometry.get("stride", 4)),
         "geometry_min_depth_m": geometry.get("min_depth_m", 0.1),
         "geometry_max_depth_m": geometry.get("max_depth_m", 80.0),
+        "bev_enabled": (
+            args.enable_bev if args.enable_bev is not None else bool(bev_config.get("enabled", False))
+        ),
+        "bev_config": args.bev_config or bev_config.get("config", "configs/bev.yaml"),
+        "bev_output": bev_config.get("output", {}),
         "device": args.device or models["device"],
         "iou_threshold": args.iou_threshold if args.iou_threshold is not None else float(fusion["iou_threshold"]),
         "require_same_class": bool(fusion["require_same_class"]),
@@ -187,6 +205,19 @@ def main() -> int:
             from src.utils.io_utils import load_yaml
 
             geometry_intrinsics = load_yaml(settings["camera_config"]).get("camera", {})
+        bev_settings = {}
+        if settings["bev_enabled"]:
+            from src.utils.io_utils import load_yaml
+
+            loaded_bev = load_yaml(settings["bev_config"])
+            bev_settings = {
+                "enabled": True,
+                "config": loaded_bev.get("bev", {}),
+                "conflict_policy": loaded_bev.get("bev", {}).get("conflict_policy", "nearest"),
+                "id2label": scene_segmenter.id2label if scene_segmenter is not None else None,
+                **loaded_bev.get("runtime", {}),
+                **settings["bev_output"],
+            }
         pipeline = PerceptionPipeline(
             detector, segmenter,
             scene_segmenter=scene_segmenter,
@@ -232,6 +263,7 @@ def main() -> int:
                 "min_depth_m": settings["geometry_min_depth_m"],
                 "max_depth_m": settings["geometry_max_depth_m"],
             },
+            bev_output=bev_settings or {"enabled": False},
         )
         saved_path = save_json(result, settings["output_path"])
         print(f"Saved perception JSON: {saved_path}")

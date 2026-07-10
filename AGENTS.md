@@ -25,6 +25,9 @@ Repository guidance for Codex and other coding agents.
 - Never guess camera intrinsics; require explicit calibration values before geometry back-projection.
 - Geometry must use in-memory depth and class maps from the current frame, not reload saved artifacts for computation.
 - Record geometry coordinate frame and units in metadata; do not conflate camera-coordinate point clouds with BEV.
+- BEV must use in-memory geometry results directly; do not reload saved NPZ or PNG artifacts for computation.
+- Do not conflate camera-centric BEV with world-coordinate BEV, and do not treat observed cells as obstacles by default.
+- Reuse existing scene class mapping for BEV regions and record grid resolution, ranges, coordinate frame, and units in metadata.
 - Do not store raw mask arrays directly in JSON. Store mask images under `outputs/` and put only paths and summary values in JSON.
 - Keep generated output data out of Git. `outputs/` can become large quickly.
 - Preserve existing detection code unless a requested change specifically requires modifying it.

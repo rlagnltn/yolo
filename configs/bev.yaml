@@ -1,0 +1,23 @@
+bev:
+  x_min_m: -20.0
+  x_max_m: 20.0
+  z_min_m: 0.0
+  z_max_m: 80.0
+  resolution_m: 0.2
+  min_y_m: null
+  max_y_m: null
+  unknown_class_id: 255
+  conflict_policy: nearest
+
+output:
+  bev_dir: outputs/bev
+  class_grid_dir: outputs/bev/class_grids
+  drivable_grid_dir: outputs/bev/drivable
+  non_drivable_grid_dir: outputs/bev/non_drivable
+  visualization_dir: outputs/bev/visualizations
+
+runtime:
+  save_class_grid_npy: true
+  save_class_grid_png: true
+  save_region_masks: true
+  save_visualizations: true

@@ -27,15 +27,15 @@
 - Added depth tests and verified the real metric model on CPU.
 - Added camera intrinsics handling and metric-depth 3D back-projection.
 - Added camera-coordinate point cloud NPZ outputs with optional semantic class IDs.
+- Added camera-centric Semantic BEV Grid generation.
 
 ## In Progress
 
-- Real driving-video validation of scene segmentation, depth, geometry, and unified perception.
+- Semantic Occupancy / Cost Grid.
 
 ## Remaining
 
 - Run on a real sample driving video after the user places a file at `datasets/raw/sample.mp4` or passes another path with `--input`.
-- Implement BEV transformation.
 - Implement potential field and planner modules.
 - BEV, Potential Field, and Path Planning are not implemented yet.
 
