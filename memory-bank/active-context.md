@@ -2,16 +2,16 @@
 
 ## Current Focus
 
-Local Minimum Handling with A* Hybrid Fallback is implemented; the next focus is Path Smoothing and Trajectory Generation.
+Streaming video planning with temporal stabilization, MP4 overlays, and JSONL metadata is implemented.
 
 ## Current Scope Boundary
 
-Object detection, YOLO instance segmentation, SegFormer scene segmentation, monocular metric depth, camera intrinsics, 3D back-projection, camera-centric semantic BEV, semantic occupancy/cost grids, goal-conditioned potential fields, and unified perception are implemented. Planning, temporal smoothing, and fine-tuning are not implemented.
+The unified perception, hybrid planner, geometric trajectory, temporal stabilization, streaming overlay, and JSONL output stages are implemented. Vehicle dynamics, tracking, and world-coordinate planning are not implemented.
 
 ## Next Work Order
 
-1. Add Path Smoothing and Trajectory Generation.
-2. Add Vehicle Kinematics or Dynamic Planning later.
+1. Add Vehicle Kinematics and Speed Profile if the project scope expands.
+2. Add trajectory tracking or dynamic replanning later.
 
 ## Implementation Notes
 
@@ -34,9 +34,9 @@ Geometry source points are camera-coordinate XYZ in meters, generated from in-me
 
 ## Current Baseline
 
-- Baseline: current `main` after the Goal-conditioned Potential Field commit
-- Tests: `101 passed`
+- Baseline: current `main` after the Streaming Video Planning commit
+- Tests: `106 passed`
 - Remote target: `origin/main`
-- Completed: Local Minimum Handling with A* Hybrid Fallback
-- Next: Path Smoothing and Trajectory Generation
-- After: Vehicle Kinematics / Dynamic Planning
+- Completed: Streaming Video Planning and Visualization
+- Next: Vehicle Kinematics and Speed Profile
+- After: Trajectory Tracking / Dynamic Replanning

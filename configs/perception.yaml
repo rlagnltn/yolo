@@ -109,10 +109,3 @@ trajectory:
   output:
     trajectory_dir: outputs/perception/trajectory/data
     visualization_dir: outputs/perception/trajectory/visualizations
-
-trajectory:
-  enabled: false
-  config: configs/trajectory.yaml
-  output:
-    trajectory_dir: outputs/perception/trajectory/data
-    visualization_dir: outputs/perception/trajectory/visualizations

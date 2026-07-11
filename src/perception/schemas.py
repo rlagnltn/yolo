@@ -10,6 +10,7 @@ from src.geometry.schemas import GeometryFrameRecord
 from src.bev.schemas import BEVFrameRecord
 from src.mapping.schemas import MappingFrameRecord
 from src.potential.schemas import PotentialFrameRecord
+from src.planner.schemas import PlannerFrameRecord
 
 
 class DetectionRecord(TypedDict):
@@ -56,4 +57,6 @@ class FrameRecord(TypedDict):
     bev: BEVFrameRecord | None
     mapping: MappingFrameRecord | None
     potential: PotentialFrameRecord | None
+    planner: PlannerFrameRecord | None
+    trajectory: dict[str, object] | None
     errors: list[str]

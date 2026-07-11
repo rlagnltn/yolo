@@ -46,6 +46,8 @@ class PerceptionPipeline:
         potential_output: dict[str, Any] | None = None,
         planner_output: dict[str, Any] | None = None,
         trajectory_output: dict[str, Any] | None = None,
+        temporal_state: Any | None = None,
+        temporal_options: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         detections: list[dict[str, Any]] = []
         segments: list[dict[str, Any]] = []
@@ -148,8 +150,19 @@ class PerceptionPipeline:
             bev_grid, frame_index, mapping_output, errors
         )
         potential_result, planner_context = self._build_potential_result(mapping_grid, frame_index, potential_output, errors)
+        temporal = temporal_options or {}
+        if temporal_state is not None and planner_context is not None:
+            temporal_state.prepare(tuple(frame.shape[:2]), planner_context["goal_cell"], planner_context["occupancy_grid"].shape)
+            if temporal.get("potential_enabled", True):
+                planner_context["potential_grid"] = temporal_state.smooth_potential(
+                    planner_context["potential_grid"], planner_context["occupancy_grid"] == 100,
+                    float(temporal.get("potential_alpha", .4)),
+                )
+        self._last_video_context = planner_context
         planner_result = self._build_planner_result(planner_context, frame_index, planner_output, errors)
         trajectory_result = self._build_trajectory_result(trajectory_output, planner_result, errors)
+        if temporal_state is not None:
+            temporal_state.processed_frame_count += 1
         return {
             "frame_index": frame_index,
             "timestamp_sec": float(timestamp_sec),
@@ -431,7 +444,7 @@ class PerceptionPipeline:
                 grid_file=path_dir/f"{stem}_grid.npy"; metric_file=path_dir/f"{stem}_metric.npy"; np.save(grid_file,path,allow_pickle=False); np.save(metric_file,metric,allow_pickle=False); metadata.update(grid_path_path=str(grid_file),metric_path_path=str(metric_file))
             if options.get("save_visualization", True): metadata["visualization_path"] = str(save_image(draw_path_on_potential(context["potential_grid"],path,start_cell,context["goal_cell"]), Path(vis_dir)/f"{stem}.png"))
             if options.get("save_path_json", True): metadata["metadata_path"] = str(save_json(metadata,path_dir/f"{stem}.json"))
-            self._last_planner_memory = {"path_rc": path, "occupancy_grid": context["occupancy_grid"], "cost_grid": context["cost_grid"], "bev_config": context["bev_config"], "source_algorithm": selected_algorithm, "frame_index": frame_index}
+            self._last_planner_memory = {"path_rc": path, "potential_grid": context["potential_grid"], "occupancy_grid": context["occupancy_grid"], "cost_grid": context["cost_grid"], "bev_config": context["bev_config"], "source_algorithm": selected_algorithm, "frame_index": frame_index, "goal_cell": context["goal_cell"], "start_cell": start_cell}
             return metadata
         except Exception as exc:
             if not self.continue_on_error: raise
@@ -454,6 +467,7 @@ class PerceptionPipeline:
             data = ensure_dir(options.get("trajectory_dir", "outputs/perception/trajectory/data")); stem=f"frame_{memory['frame_index']:06d}"; traj=result["trajectory"]
             positions=data/f"{stem}_positions.npy"; bundle=data/f"{stem}_trajectory.npz"; np.save(positions,traj["positions_xz"],allow_pickle=False); np.savez_compressed(bundle,**traj,source_grid_path=memory["path_rc"],shortcut_grid_path=result["shortcut_path_rc"])
             meta={"coordinate_frame":"camera_xz","trajectory_type":"geometric_reference","status":result["status"],"source_algorithm":memory["source_algorithm"],"trajectory_point_count":len(traj["positions_xz"]),"path_length_m":float(traj["arc_length_m"][-1]),"collision_free":True,"smoothing_fallback_used":result["smoothing_fallback_used"],"maximum_curvature_1pm":result["diagnostics"]["maximum_observed_curvature"],"positions_path":str(positions),"trajectory_path":str(bundle)}
+            self._last_trajectory_memory = {"positions_xz": traj["positions_xz"], "heading_rad": traj["heading_rad"], "curvature_1pm": traj["curvature_1pm"], "shortcut_path_rc": result["shortcut_path_rc"]}
             if options.get("save_json", True): meta["metadata_path"]=str(save_json(meta,data/f"{stem}.json"))
             return meta
         except Exception as exc:

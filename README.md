@@ -350,6 +350,20 @@ With `--enable-depth --enable-geometry`, each valid depth pixel is projected as 
 
 The default `hybrid` mode runs gradient descent first, then deterministically falls back to A* only after a supported gradient failure. A* excludes UNKNOWN/OCCUPIED cells and adds inflated traversability cost to its movement cost. Its fallback replans from the original start rather than joining a partial gradient path. This bypasses a local minimum through global search; it does not add path smoothing or vehicle kinematics.
 
+## Streaming video planning
+
+Enable scene segmentation, depth, geometry, BEV, mapping, potential, planner, and trajectory in `configs/perception.yaml`, provide calibrated camera intrinsics, then run:
+
+```bash
+python -m src.cli video-plan --input input.mp4 --output outputs/planned.mp4 --goal-x 0.5 --goal-y 0.1 --normalized-goal --metadata outputs/planned.jsonl --show-potential --show-trajectory
+```
+
+Normalized coordinates use `x=0..1` left-to-right and `y=0..1` top-to-bottom; the default start is the bottom-center pixel. Omitting the normalized flags selects pixel coordinates. Potential EMA defaults to `alpha=0.4` and restores current hard-obstacle values. Trajectory blending defaults to `alpha=0.5`; previous trajectories are reused only while collision-free, for at most three frames. Goal, frame-shape, or grid-shape changes reset temporal state.
+
+MP4 and optional JSONL are written frame-by-frame. With `--frame-stride N`, timestamps retain the source timeline and output FPS is `source_fps / N`. The default `mp4v` codec depends on OpenCV build support. Overlay categories can be disabled individually.
+
+This is camera-image visualization backed by the configured camera-centric grid. It does not correct perspective into world coordinates or produce steering, speed, vehicle dynamics, or hardware-control commands.
+
 ## Roadmap
 
 1. YOLO object detection for driving video.
