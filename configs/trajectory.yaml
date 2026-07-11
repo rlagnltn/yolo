@@ -1,0 +1,11 @@
+trajectory:
+  shortcut_enabled: true
+  smoothing_enabled: true
+  smoothing_method: chaikin
+  smoothing_iterations: 2
+  resample_spacing_m: 0.2
+  collision_check_step_m: 0.05
+  preserve_endpoints: true
+  maximum_curvature: null
+output: {trajectory_dir: outputs/trajectory/data, visualization_dir: outputs/trajectory/visualizations}
+runtime: {save_npy: true, save_npz: true, save_json: true, save_visualization: true}

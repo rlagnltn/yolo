@@ -65,4 +65,6 @@ Optimization of repeated commands, repository reads, logs, and token usage is th
 - Local-minimum detection is separate from recovery logic; grid paths are not vehicle trajectories.
 - Hybrid fallback runs only for defined gradient failure states, never configuration or invalid start/goal errors.
 - A* must not traverse UNKNOWN or OCCUPIED cells, must use admissible heuristics, and must resolve equal priorities deterministically.
+- Smoothing results must be collision-checked; never store trajectories through UNKNOWN or OCCUPIED cells.
+- Keep grid paths distinct from camera_xz geometric reference trajectories, which are not vehicle-control commands.
 - Do not concatenate a failed gradient partial path with a new A* path; A* replans from the original start.
