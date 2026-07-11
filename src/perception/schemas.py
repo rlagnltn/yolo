@@ -9,6 +9,7 @@ from src.depth.schemas import DepthFrameRecord
 from src.geometry.schemas import GeometryFrameRecord
 from src.bev.schemas import BEVFrameRecord
 from src.mapping.schemas import MappingFrameRecord
+from src.potential.schemas import PotentialFrameRecord
 
 
 class DetectionRecord(TypedDict):
@@ -54,4 +55,5 @@ class FrameRecord(TypedDict):
     geometry: GeometryFrameRecord | None
     bev: BEVFrameRecord | None
     mapping: MappingFrameRecord | None
+    potential: PotentialFrameRecord | None
     errors: list[str]

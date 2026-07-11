@@ -57,3 +57,6 @@ Optimization of repeated commands, repository reads, logs, and token usage is th
 - Keep occupancy NPY state values distinct from PNG display encoding; use cost-grid NPY for downstream computation.
 - Build mapping directly from the current frame's in-memory BEV arrays, never by reloading saved BEV artifacts.
 - Configure obstacle inflation radius in meters.
+- Goal cells must be observed FREE cells; do not give UNKNOWN cells low potential.
+- Use raw potential NPY arrays as planner inputs and exclude blocked cells from normalization.
+- Keep BEV array-row direction distinct from the positive Z direction, and keep gradient generation separate from path planning.

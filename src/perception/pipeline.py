@@ -43,6 +43,7 @@ class PerceptionPipeline:
         geometry_output: dict[str, Any] | None = None,
         bev_output: dict[str, Any] | None = None,
         mapping_output: dict[str, Any] | None = None,
+        potential_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         detections: list[dict[str, Any]] = []
         segments: list[dict[str, Any]] = []
@@ -141,9 +142,10 @@ class PerceptionPipeline:
         bev_result, bev_grid = self._build_bev_result(
             geometry_cloud, semantic_labels, frame_index, bev_output, errors
         )
-        mapping_result = self._build_mapping_result(
+        mapping_result, mapping_grid = self._build_mapping_result(
             bev_grid, frame_index, mapping_output, errors
         )
+        potential_result = self._build_potential_result(mapping_grid, frame_index, potential_output, errors)
         return {
             "frame_index": frame_index,
             "timestamp_sec": float(timestamp_sec),
@@ -157,6 +159,7 @@ class PerceptionPipeline:
             "geometry": geometry_result,
             "bev": bev_result,
             "mapping": mapping_result,
+            "potential": potential_result,
             "errors": errors,
         }
 
@@ -275,16 +278,16 @@ class PerceptionPipeline:
         frame_index: int,
         mapping_output: dict[str, Any] | None,
         errors: list[str],
-    ) -> dict[str, Any] | None:
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
         options = mapping_output or {}
         if not options.get("enabled", False):
-            return None
+            return None, None
         if bev_grid is None:
             errors.append("mapping: semantic BEV must be enabled before mapping.")
-            return None
+            return None, None
         if not bev_grid.get("has_semantic_labels") or "class_grid" not in bev_grid:
             errors.append("mapping: semantic labels are required for semantic occupancy generation.")
-            return None
+            return None, None
         try:
             from src.mapping import (
                 MappingConfig, create_semantic_cost_grid, create_semantic_occupancy_grid,
@@ -304,7 +307,7 @@ class PerceptionPipeline:
                     config.inflation_radius_m, config.inflation_decay,
                 ) if config.inflation_enabled else cost_grid.copy()
             )
-            return save_mapping_frame_result(
+            metadata = save_mapping_frame_result(
                 frame_index, occupancy, cost_grid, inflated,
                 resolution_m=bev_grid["config"].resolution_m,
                 config=config,
@@ -319,11 +322,96 @@ class PerceptionPipeline:
                 save_inflated_cost=options.get("save_inflated_cost", True),
                 save_visualizations=options.get("save_visualizations", True),
             )
+            return metadata, {
+                "occupancy_grid": occupancy["occupancy_grid"], "inflated_cost_grid": inflated,
+                "resolution_m": bev_grid["config"].resolution_m, "bev_config": bev_grid["config"],
+            }
         except Exception as exc:
             if not self.continue_on_error:
                 raise
             errors.append(f"mapping: {exc}")
+            return None, None
+
+    def _build_potential_result(
+        self, mapping_grid: dict[str, Any] | None, frame_index: int,
+        potential_output: dict[str, Any] | None, errors: list[str],
+    ) -> dict[str, Any] | None:
+        options = potential_output or {}
+        if not options.get("enabled", False):
             return None
+        if mapping_grid is None:
+            errors.append("potential: mapping must be enabled before potential generation.")
+            return None
+        try:
+            from src.potential import (
+                PotentialConfig, calculate_potential_gradient, combine_potential_fields,
+                create_attractive_potential, create_repulsive_potential, metric_goal_to_grid,
+                save_potential_frame_result, validate_goal_cell,
+            )
+
+            config = PotentialConfig.from_dict(options.get("config", {}))
+            goal = options.get("goal", {})
+            row, col, x_m, z_m = self._resolve_potential_goal(goal, mapping_grid)
+            occupancy = mapping_grid["occupancy_grid"]
+            if occupancy[row, col] != 0:
+                raise ValueError("Goal cell must be an observed FREE cell.")
+            attractive = create_attractive_potential(
+                occupancy.shape, (row, col), mapping_grid["resolution_m"], config.attractive_gain,
+                config.attractive_mode, config.attractive_saturation_distance_m,
+            )
+            repulsive = create_repulsive_potential(
+                occupancy == 100, mapping_grid["resolution_m"], config.repulsive_gain,
+                config.repulsive_influence_radius_m,
+            )
+            combined_fields = combine_potential_fields(
+                attractive, repulsive, mapping_grid["inflated_cost_grid"], occupancy, config
+            )
+            combined = combined_fields["normalized_potential"]
+            if combined is None:
+                combined = combined_fields["raw_potential"]
+            fields = {"attractive": attractive, "repulsive": repulsive, "combined": combined,
+                      "blocked_mask": combined_fields["blocked_mask"]}
+            gradient = calculate_potential_gradient(combined, mapping_grid["resolution_m"], combined_fields["blocked_mask"])
+            return save_potential_frame_result(
+                frame_index, fields, gradient, goal_cell=(row, col), goal_metric=(x_m, z_m),
+                resolution_m=mapping_grid["resolution_m"], config=config,
+                attractive_dir=options.get("attractive_dir", "outputs/perception/potential/attractive"),
+                repulsive_dir=options.get("repulsive_dir", "outputs/perception/potential/repulsive"),
+                combined_dir=options.get("combined_dir", "outputs/perception/potential/combined"),
+                gradient_dir=options.get("gradient_dir", "outputs/perception/potential/gradients"),
+                visualization_dir=options.get("visualization_dir", "outputs/perception/potential/visualizations"),
+                save_npy=options.get("save_npy", True), save_png=options.get("save_png", True),
+                save_gradient=options.get("save_gradient", True), save_visualizations=options.get("save_visualizations", True),
+            )
+        except Exception as exc:
+            if not self.continue_on_error:
+                raise
+            errors.append(f"potential: {exc}")
+            return None
+
+    @staticmethod
+    def _resolve_potential_goal(goal: dict[str, Any], mapping_grid: dict[str, Any]) -> tuple[int, int, float, float]:
+        from src.potential import metric_goal_to_grid, validate_goal_cell
+
+        row, col, x_m, z_m = goal.get("row"), goal.get("col"), goal.get("x_m"), goal.get("z_m")
+        grid_given, metric_given = row is not None or col is not None, x_m is not None or z_m is not None
+        if grid_given and metric_given:
+            raise ValueError("Provide either a grid goal or a metric goal, not both.")
+        if not grid_given and not metric_given:
+            raise ValueError("Potential generation requires a goal.")
+        config = mapping_grid["bev_config"]
+        if metric_given:
+            if x_m is None or z_m is None:
+                raise ValueError("Metric goal requires both x_m and z_m.")
+            x_m, z_m = float(x_m), float(z_m)
+            row, col = metric_goal_to_grid(x_m, z_m, config)
+        else:
+            if row is None or col is None:
+                raise ValueError("Grid goal requires both row and col.")
+            row, col = validate_goal_cell(row, col, config.shape)
+            x_m = config.x_min_m + (col + 0.5) * config.resolution_m
+            z_m = config.z_min_m + (config.height_cells - row - 0.5) * config.resolution_m
+        return int(row), int(col), float(x_m), float(z_m)
 
     def process_video(
         self,
@@ -339,6 +427,7 @@ class PerceptionPipeline:
         geometry_output: dict[str, Any] | None = None,
         bev_output: dict[str, Any] | None = None,
         mapping_output: dict[str, Any] | None = None,
+        potential_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         from src.utils.video_utils import get_video_info, iter_video_frames
         from src.utils.visualization import save_perception_overlay
@@ -357,6 +446,7 @@ class PerceptionPipeline:
                 geometry_output=geometry_output,
                 bev_output=bev_output,
                 mapping_output=mapping_output,
+                potential_output=potential_output,
             )
             frames.append(frame_result)
             if save_visualizations and visualization_dir is not None:

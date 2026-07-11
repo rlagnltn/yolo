@@ -32,6 +32,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--bev-config")
     parser.add_argument("--enable-mapping", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--mapping-config")
+    parser.add_argument("--enable-potential", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--potential-config")
+    parser.add_argument("--goal-row", type=int)
+    parser.add_argument("--goal-col", type=int)
+    parser.add_argument("--goal-x", type=float)
+    parser.add_argument("--goal-z", type=float)
     return parser.parse_args()
 
 
@@ -106,6 +112,17 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
                 "visualization_dir": "outputs/perception/mapping/visualizations",
             },
         },
+        "potential": {
+            "enabled": False,
+            "config": "configs/potential.yaml",
+            "output": {
+                "attractive_dir": "outputs/perception/potential/attractive",
+                "repulsive_dir": "outputs/perception/potential/repulsive",
+                "combined_dir": "outputs/perception/potential/combined",
+                "gradient_dir": "outputs/perception/potential/gradients",
+                "visualization_dir": "outputs/perception/potential/visualizations",
+            },
+        },
     }
     config_path = Path(args.config)
     config = _merge(defaults, load_yaml(config_path)) if config_path.exists() else defaults
@@ -113,6 +130,7 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
     geometry = config.get("geometry", {})
     bev_config = config.get("bev", {})
     mapping_config = config.get("mapping", {})
+    potential_config = config.get("potential", {})
     instance_model = models.get("instance_segmentation", models.get("segmentation", {}))
     scene_model = models.get("scene_segmentation", {})
     depth_model = models.get("depth", {})
@@ -174,6 +192,12 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
         ),
         "mapping_config": args.mapping_config or mapping_config.get("config", "configs/mapping.yaml"),
         "mapping_output": mapping_config.get("output", {}),
+        "potential_enabled": (
+            args.enable_potential if args.enable_potential is not None else bool(potential_config.get("enabled", False))
+        ),
+        "potential_config": args.potential_config or potential_config.get("config", "configs/potential.yaml"),
+        "potential_output": potential_config.get("output", {}),
+        "goal_override": {"row": args.goal_row, "col": args.goal_col, "x_m": args.goal_x, "z_m": args.goal_z},
         "device": args.device or models["device"],
         "iou_threshold": args.iou_threshold if args.iou_threshold is not None else float(fusion["iou_threshold"]),
         "require_same_class": bool(fusion["require_same_class"]),
@@ -247,6 +271,20 @@ def main() -> int:
                 **loaded_mapping.get("runtime", {}),
                 **settings["mapping_output"],
             }
+        potential_settings = {}
+        if settings["potential_enabled"]:
+            from src.utils.io_utils import load_yaml
+
+            loaded_potential = load_yaml(settings["potential_config"])
+            configured_goal = loaded_potential.get("goal", {})
+            override = {key: value for key, value in settings["goal_override"].items() if value is not None}
+            potential_settings = {
+                "enabled": True,
+                "config": loaded_potential,
+                "goal": {**configured_goal, **override},
+                **loaded_potential.get("runtime", {}),
+                **settings["potential_output"],
+            }
         pipeline = PerceptionPipeline(
             detector, segmenter,
             scene_segmenter=scene_segmenter,
@@ -294,6 +332,7 @@ def main() -> int:
             },
             bev_output=bev_settings or {"enabled": False},
             mapping_output=mapping_settings or {"enabled": False},
+            potential_output=potential_settings or {"enabled": False},
         )
         saved_path = save_json(result, settings["output_path"])
         print(f"Saved perception JSON: {saved_path}")

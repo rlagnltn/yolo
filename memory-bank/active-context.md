@@ -2,16 +2,16 @@
 
 ## Current Focus
 
-Semantic Occupancy / Cost Grid is implemented; the next focus is Goal-conditioned Potential Field.
+Goal-conditioned Potential Field is implemented; the next focus is Potential Field Path Planner.
 
 ## Current Scope Boundary
 
-Object detection, YOLO instance segmentation, SegFormer scene segmentation, monocular metric depth, camera intrinsics, 3D back-projection, camera-centric semantic BEV, semantic occupancy/cost grids, and unified perception are implemented. Potential fields, planning, temporal smoothing, and fine-tuning are not implemented.
+Object detection, YOLO instance segmentation, SegFormer scene segmentation, monocular metric depth, camera intrinsics, 3D back-projection, camera-centric semantic BEV, semantic occupancy/cost grids, goal-conditioned potential fields, and unified perception are implemented. Planning, temporal smoothing, and fine-tuning are not implemented.
 
 ## Next Work Order
 
-1. Build Goal-conditioned Potential Field.
-2. Add path planning stages later.
+1. Build Potential Field Path Planner.
+2. Add local-minimum handling later.
 
 ## Implementation Notes
 
@@ -34,9 +34,9 @@ Geometry source points are camera-coordinate XYZ in meters, generated from in-me
 
 ## Current Baseline
 
-- Baseline: current `main` after the Semantic Occupancy / Cost Grid commit
-- Tests: `87 passed`
+- Baseline: current `main` after the Goal-conditioned Potential Field commit
+- Tests: `95 passed`
 - Remote target: `origin/main`
-- Completed: Semantic Occupancy / Cost Grid
-- Next: Goal-conditioned Potential Field
-- After: Path Planning
+- Completed: Goal-conditioned Potential Field
+- Next: Potential Field Path Planner
+- After: Local Minimum Handling / Hybrid Planner

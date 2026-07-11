@@ -340,6 +340,10 @@ With `--enable-depth --enable-geometry`, each valid depth pixel is projected as 
 
 `--enable-mapping` converts the in-memory Semantic BEV into `UNKNOWN=-1`, `FREE=0`, and `OCCUPIED=100`: road alone is free by default, while sidewalk and static/dynamic obstacles are occupied; unobserved, sky, and unmapped cells remain unknown. Traversability costs use float32 values from 0 to 1 with unknown stored as NaN. Linear obstacle inflation uses a meter-valued radius (`1.0 m` by default). NPY files are computation sources; PNG files are visual encodings only (occupancy: unknown 127, free 255, occupied 0). This output is not yet a Potential Field.
 
+## Goal-conditioned Potential Field
+
+`--enable-potential` uses the in-memory mapping grid and either a grid goal (`--goal-row`, `--goal-col`) or camera-centric metric goal (`--goal-x`, `--goal-z`). Goals must be observed FREE cells, so unknown and occupied cells are rejected. Attractive, repulsive, and combined potentials include traversability cost; unknown is blocked by default. The gradient field is saved for a later planner, but no path is generated here. NPY/NPZ arrays are planner inputs; PNG files are visualizations only. The next stage is Potential Field Path Planning.
+
 ## Roadmap
 
 1. YOLO object detection for driving video.

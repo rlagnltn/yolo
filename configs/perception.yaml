@@ -86,3 +86,13 @@ mapping:
     cost_grid_dir: outputs/perception/mapping/cost_grids
     inflated_cost_dir: outputs/perception/mapping/inflated_cost_grids
     visualization_dir: outputs/perception/mapping/visualizations
+
+potential:
+  enabled: false
+  config: configs/potential.yaml
+  output:
+    attractive_dir: outputs/perception/potential/attractive
+    repulsive_dir: outputs/perception/potential/repulsive
+    combined_dir: outputs/perception/potential/combined
+    gradient_dir: outputs/perception/potential/gradients
+    visualization_dir: outputs/perception/potential/visualizations
