@@ -1,0 +1,12 @@
+planner:
+  algorithm: gradient_descent
+  connectivity: 8
+  max_steps: 2000
+  goal_tolerance_cells: 1
+  minimum_potential_drop: 1.0e-6
+  prevent_corner_cutting: true
+  revisit_limit: 2
+  local_minimum_window: 5
+start: {input_type: grid, row: null, col: null, x_m: null, z_m: null}
+output: {path_dir: outputs/planner/paths, visualization_dir: outputs/planner/visualizations}
+runtime: {save_path_npy: true, save_path_json: true, save_visualization: true}

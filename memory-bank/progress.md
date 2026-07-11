@@ -30,10 +30,11 @@
 - Added camera-centric Semantic BEV Grid generation.
 - Added Semantic Occupancy / Traversability Cost Grid generation and metric obstacle inflation.
 - Added Goal-conditioned Potential Field generation and gradients.
+- Added deterministic potential-gradient grid planning with optional unified-pipeline execution.
 
 ## In Progress
 
-- Potential Field Path Planner.
+- Final validation and commit of Potential Field Gradient Path Planner.
 
 ## Remaining
 

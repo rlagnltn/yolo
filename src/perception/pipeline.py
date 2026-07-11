@@ -44,6 +44,7 @@ class PerceptionPipeline:
         bev_output: dict[str, Any] | None = None,
         mapping_output: dict[str, Any] | None = None,
         potential_output: dict[str, Any] | None = None,
+        planner_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         detections: list[dict[str, Any]] = []
         segments: list[dict[str, Any]] = []
@@ -145,7 +146,8 @@ class PerceptionPipeline:
         mapping_result, mapping_grid = self._build_mapping_result(
             bev_grid, frame_index, mapping_output, errors
         )
-        potential_result = self._build_potential_result(mapping_grid, frame_index, potential_output, errors)
+        potential_result, planner_context = self._build_potential_result(mapping_grid, frame_index, potential_output, errors)
+        planner_result = self._build_planner_result(planner_context, frame_index, planner_output, errors)
         return {
             "frame_index": frame_index,
             "timestamp_sec": float(timestamp_sec),
@@ -160,6 +162,7 @@ class PerceptionPipeline:
             "bev": bev_result,
             "mapping": mapping_result,
             "potential": potential_result,
+            "planner": planner_result,
             "errors": errors,
         }
 
@@ -335,13 +338,13 @@ class PerceptionPipeline:
     def _build_potential_result(
         self, mapping_grid: dict[str, Any] | None, frame_index: int,
         potential_output: dict[str, Any] | None, errors: list[str],
-    ) -> dict[str, Any] | None:
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
         options = potential_output or {}
         if not options.get("enabled", False):
-            return None
+            return None, None
         if mapping_grid is None:
             errors.append("potential: mapping must be enabled before potential generation.")
-            return None
+            return None, None
         try:
             from src.potential import (
                 PotentialConfig, calculate_potential_gradient, combine_potential_fields,
@@ -372,7 +375,7 @@ class PerceptionPipeline:
             fields = {"attractive": attractive, "repulsive": repulsive, "combined": combined,
                       "blocked_mask": combined_fields["blocked_mask"]}
             gradient = calculate_potential_gradient(combined, mapping_grid["resolution_m"], combined_fields["blocked_mask"])
-            return save_potential_frame_result(
+            result = save_potential_frame_result(
                 frame_index, fields, gradient, goal_cell=(row, col), goal_metric=(x_m, z_m),
                 resolution_m=mapping_grid["resolution_m"], config=config,
                 attractive_dir=options.get("attractive_dir", "outputs/perception/potential/attractive"),
@@ -383,10 +386,43 @@ class PerceptionPipeline:
                 save_npy=options.get("save_npy", True), save_png=options.get("save_png", True),
                 save_gradient=options.get("save_gradient", True), save_visualizations=options.get("save_visualizations", True),
             )
+            return result, {"potential_grid": combined, "occupancy_grid": occupancy, "goal_cell": (row, col), "bev_config": mapping_grid["bev_config"]}
         except Exception as exc:
             if not self.continue_on_error:
                 raise
             errors.append(f"potential: {exc}")
+            return None, None
+
+    def _build_planner_result(self, context: dict[str, Any] | None, frame_index: int, planner_output: dict[str, Any] | None, errors: list[str]) -> dict[str, Any] | None:
+        options = planner_output or {}
+        if not options.get("enabled", False):
+            return None
+        if context is None:
+            errors.append("planner: potential must be enabled before planning.")
+            return None
+        try:
+            import numpy as np
+            from src.planner import PlannerConfig, calculate_path_length_m, draw_path_on_potential, grid_path_to_metric, plan_gradient_descent, resolve_start_cell, validate_grid_path, validate_start_cell
+            from src.utils.io_utils import ensure_dir, save_image, save_json
+            config = PlannerConfig.from_dict(options.get("config", {}))
+            start = options.get("start", {})
+            grid_start = (start["row"], start["col"]) if start.get("row") is not None or start.get("col") is not None else None
+            metric_start = (start["x_m"], start["z_m"]) if start.get("x_m") is not None or start.get("z_m") is not None else None
+            start_cell = resolve_start_cell(grid_start, metric_start, context["bev_config"])
+            validate_start_cell(start_cell, context["occupancy_grid"])
+            result = plan_gradient_descent(context["potential_grid"], context["occupancy_grid"], start_cell, context["goal_cell"], config)
+            path = result["path_rc"]; metric = grid_path_to_metric(path, context["bev_config"])
+            if result["reached_goal"]: validate_grid_path(path, context["occupancy_grid"], start_cell, context["goal_cell"], config.connectivity, config.goal_tolerance_cells, config.prevent_corner_cutting)
+            stem = f"frame_{frame_index:06d}"; path_dir = ensure_dir(options.get("path_dir", "outputs/perception/planner/paths")); vis_dir = options.get("visualization_dir", "outputs/perception/planner/visualizations")
+            metadata = {"coordinate_frame":"camera_xz", "algorithm":"gradient_descent", "status":result["status"], "reached_goal":result["reached_goal"], "start":{"row":start_cell[0],"col":start_cell[1]}, "goal":{"row":context["goal_cell"][0],"col":context["goal_cell"][1]}, "step_count":result["step_count"], "path_point_count":len(path), "path_length_m":calculate_path_length_m(metric), "termination_reason":result["termination_reason"], "local_minimum_detected":result["diagnostics"]["local_minimum_detected"]}
+            if options.get("save_path_npy", True):
+                grid_file=path_dir/f"{stem}_grid.npy"; metric_file=path_dir/f"{stem}_metric.npy"; np.save(grid_file,path,allow_pickle=False); np.save(metric_file,metric,allow_pickle=False); metadata.update(grid_path_path=str(grid_file),metric_path_path=str(metric_file))
+            if options.get("save_visualization", True): metadata["visualization_path"] = str(save_image(draw_path_on_potential(context["potential_grid"],path,start_cell,context["goal_cell"]), Path(vis_dir)/f"{stem}.png"))
+            if options.get("save_path_json", True): metadata["metadata_path"] = str(save_json(metadata,path_dir/f"{stem}.json"))
+            return metadata
+        except Exception as exc:
+            if not self.continue_on_error: raise
+            errors.append(f"planner: {exc}")
             return None
 
     @staticmethod
@@ -428,6 +464,7 @@ class PerceptionPipeline:
         bev_output: dict[str, Any] | None = None,
         mapping_output: dict[str, Any] | None = None,
         potential_output: dict[str, Any] | None = None,
+        planner_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         from src.utils.video_utils import get_video_info, iter_video_frames
         from src.utils.visualization import save_perception_overlay
@@ -447,6 +484,7 @@ class PerceptionPipeline:
                 bev_output=bev_output,
                 mapping_output=mapping_output,
                 potential_output=potential_output,
+                planner_output=planner_output,
             )
             frames.append(frame_result)
             if save_visualizations and visualization_dir is not None:

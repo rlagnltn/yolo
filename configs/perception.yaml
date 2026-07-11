@@ -96,3 +96,10 @@ potential:
     combined_dir: outputs/perception/potential/combined
     gradient_dir: outputs/perception/potential/gradients
     visualization_dir: outputs/perception/potential/visualizations
+
+planner:
+  enabled: false
+  config: configs/planner.yaml
+  output:
+    path_dir: outputs/perception/planner/paths
+    visualization_dir: outputs/perception/planner/visualizations

@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-Goal-conditioned Potential Field is implemented; the next focus is Potential Field Path Planner.
+Potential Field Gradient Path Planner is implemented; the next focus is Local Minimum Handling.
 
 ## Current Scope Boundary
 
@@ -10,8 +10,8 @@ Object detection, YOLO instance segmentation, SegFormer scene segmentation, mono
 
 ## Next Work Order
 
-1. Build Potential Field Path Planner.
-2. Add local-minimum handling later.
+1. Add Local Minimum Handling.
+2. Add an A* hybrid planner or trajectory smoothing later.
 
 ## Implementation Notes
 
@@ -35,8 +35,8 @@ Geometry source points are camera-coordinate XYZ in meters, generated from in-me
 ## Current Baseline
 
 - Baseline: current `main` after the Goal-conditioned Potential Field commit
-- Tests: `95 passed`
+- Tests: pending final validation
 - Remote target: `origin/main`
-- Completed: Goal-conditioned Potential Field
-- Next: Potential Field Path Planner
-- After: Local Minimum Handling / Hybrid Planner
+- Completed: Potential Field Gradient Path Planner
+- Next: Local Minimum Handling
+- After: A* Hybrid Planner / Trajectory Smoothing

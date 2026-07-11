@@ -34,6 +34,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mapping-config")
     parser.add_argument("--enable-potential", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--potential-config")
+    parser.add_argument("--enable-planner", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--planner-config")
+    parser.add_argument("--start-row", type=int); parser.add_argument("--start-col", type=int)
+    parser.add_argument("--start-x", type=float); parser.add_argument("--start-z", type=float)
     parser.add_argument("--goal-row", type=int)
     parser.add_argument("--goal-col", type=int)
     parser.add_argument("--goal-x", type=float)
@@ -123,6 +127,7 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
                 "visualization_dir": "outputs/perception/potential/visualizations",
             },
         },
+        "planner": {"enabled": False, "config": "configs/planner.yaml", "output": {"path_dir": "outputs/perception/planner/paths", "visualization_dir": "outputs/perception/planner/visualizations"}},
     }
     config_path = Path(args.config)
     config = _merge(defaults, load_yaml(config_path)) if config_path.exists() else defaults
@@ -131,6 +136,7 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
     bev_config = config.get("bev", {})
     mapping_config = config.get("mapping", {})
     potential_config = config.get("potential", {})
+    planner_config = config.get("planner", {})
     instance_model = models.get("instance_segmentation", models.get("segmentation", {}))
     scene_model = models.get("scene_segmentation", {})
     depth_model = models.get("depth", {})
@@ -197,6 +203,10 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
         ),
         "potential_config": args.potential_config or potential_config.get("config", "configs/potential.yaml"),
         "potential_output": potential_config.get("output", {}),
+        "planner_enabled": args.enable_planner if args.enable_planner is not None else bool(planner_config.get("enabled", False)),
+        "planner_config": args.planner_config or planner_config.get("config", "configs/planner.yaml"),
+        "planner_output": planner_config.get("output", {}),
+        "start_override": {"row": args.start_row, "col": args.start_col, "x_m": args.start_x, "z_m": args.start_z},
         "goal_override": {"row": args.goal_row, "col": args.goal_col, "x_m": args.goal_x, "z_m": args.goal_z},
         "device": args.device or models["device"],
         "iou_threshold": args.iou_threshold if args.iou_threshold is not None else float(fusion["iou_threshold"]),
@@ -285,6 +295,14 @@ def main() -> int:
                 **loaded_potential.get("runtime", {}),
                 **settings["potential_output"],
             }
+        planner_settings = {}
+        if settings["planner_enabled"]:
+            if not settings["potential_enabled"]: raise ValueError("Planner requires potential to be enabled.")
+            from src.utils.io_utils import load_yaml
+            loaded_planner = load_yaml(settings["planner_config"])
+            configured_start = loaded_planner.get("start", {})
+            override = {key: value for key, value in settings["start_override"].items() if value is not None}
+            planner_settings = {"enabled": True, "config": loaded_planner, "start": {**configured_start, **override}, **loaded_planner.get("runtime", {}), **settings["planner_output"]}
         pipeline = PerceptionPipeline(
             detector, segmenter,
             scene_segmenter=scene_segmenter,
@@ -333,6 +351,7 @@ def main() -> int:
             bev_output=bev_settings or {"enabled": False},
             mapping_output=mapping_settings or {"enabled": False},
             potential_output=potential_settings or {"enabled": False},
+            planner_output=planner_settings or {"enabled": False},
         )
         saved_path = save_json(result, settings["output_path"])
         print(f"Saved perception JSON: {saved_path}")

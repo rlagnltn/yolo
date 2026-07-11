@@ -18,7 +18,7 @@ The current implementation includes object, scene, and metric-depth perception:
 - Combine calibrated camera intrinsics and metric depth into camera-coordinate XYZ point clouds.
 - Optionally attach same-frame scene class IDs to generated 3D points.
 
-BEV, mapping, potential field, and planner modules remain extension points.
+BEV, mapping, potential field, and deterministic gradient-descent planning are available as optional pipeline stages.
 
 ## Project Structure
 
@@ -342,7 +342,11 @@ With `--enable-depth --enable-geometry`, each valid depth pixel is projected as 
 
 ## Goal-conditioned Potential Field
 
-`--enable-potential` uses the in-memory mapping grid and either a grid goal (`--goal-row`, `--goal-col`) or camera-centric metric goal (`--goal-x`, `--goal-z`). Goals must be observed FREE cells, so unknown and occupied cells are rejected. Attractive, repulsive, and combined potentials include traversability cost; unknown is blocked by default. The gradient field is saved for a later planner, but no path is generated here. NPY/NPZ arrays are planner inputs; PNG files are visualizations only. The next stage is Potential Field Path Planning.
+`--enable-potential` uses the in-memory mapping grid and either a grid goal (`--goal-row`, `--goal-col`) or camera-centric metric goal (`--goal-x`, `--goal-z`). Goals must be observed FREE cells, so unknown and occupied cells are rejected. Attractive, repulsive, and combined potentials include traversability cost; unknown is blocked by default.
+
+## Potential Gradient Path Planner
+
+`--enable-planner` consumes the current frame's in-memory potential and occupancy grids; it never reloads saved map artifacts. Supply exactly one start form: grid (`--start-row`, `--start-col`) or camera-centric metric (`--start-x`, `--start-z`). The planner traverses only FREE cells, supports deterministic 4/8 connectivity, and blocks diagonal corner cutting by default. It reports `success`, `local_minimum`, `cycle_detected`, `no_valid_neighbor`, or `max_steps_exceeded`; local minima are detected and reported, not recovered in this stage. Grid paths are `[row, col]`, metric paths are camera-frame `[x_m, z_m]` cell centers, and neither represents a vehicle trajectory or control command. The stage saves grid/metric NPY paths, JSON metadata, and a BGR PNG overlay under `outputs/perception/planner/`.
 
 ## Roadmap
 
@@ -354,4 +358,5 @@ With `--enable-depth --enable-geometry`, each valid depth pixel is projected as 
 6. Camera intrinsics and 3D projection.
 7. Semantic BEV transformation and map generation.
 8. Semantic potential field generation.
-9. Path planning and local-minima handling.
+9. Potential-gradient grid planning.
+10. Local-minima handling, hybrid planning, and trajectory smoothing.

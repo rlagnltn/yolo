@@ -60,3 +60,6 @@ Optimization of repeated commands, repository reads, logs, and token usage is th
 - Goal cells must be observed FREE cells; do not give UNKNOWN cells low potential.
 - Use raw potential NPY arrays as planner inputs and exclude blocked cells from normalization.
 - Keep BEV array-row direction distinct from the positive Z direction, and keep gradient generation separate from path planning.
+- Planner uses in-memory potential and occupancy results directly; UNKNOWN and OCCUPIED cells are never paths.
+- Diagonal moves enforce corner-cutting policy and planning remains deterministic for identical inputs.
+- Local-minimum detection is separate from recovery logic; grid paths are not vehicle trajectories.
