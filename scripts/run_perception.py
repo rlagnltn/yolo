@@ -36,6 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--potential-config")
     parser.add_argument("--enable-planner", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--planner-config")
+    parser.add_argument("--planner-algorithm", choices=("gradient_descent", "astar", "hybrid"))
     parser.add_argument("--start-row", type=int); parser.add_argument("--start-col", type=int)
     parser.add_argument("--start-x", type=float); parser.add_argument("--start-z", type=float)
     parser.add_argument("--goal-row", type=int)
@@ -205,6 +206,7 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
         "potential_output": potential_config.get("output", {}),
         "planner_enabled": args.enable_planner if args.enable_planner is not None else bool(planner_config.get("enabled", False)),
         "planner_config": args.planner_config or planner_config.get("config", "configs/planner.yaml"),
+        "planner_algorithm": args.planner_algorithm,
         "planner_output": planner_config.get("output", {}),
         "start_override": {"row": args.start_row, "col": args.start_col, "x_m": args.start_x, "z_m": args.start_z},
         "goal_override": {"row": args.goal_row, "col": args.goal_col, "x_m": args.goal_x, "z_m": args.goal_z},
@@ -302,6 +304,8 @@ def main() -> int:
             loaded_planner = load_yaml(settings["planner_config"])
             configured_start = loaded_planner.get("start", {})
             override = {key: value for key, value in settings["start_override"].items() if value is not None}
+            if settings["planner_algorithm"] is not None:
+                loaded_planner.setdefault("planner", {})["algorithm"] = settings["planner_algorithm"]
             planner_settings = {"enabled": True, "config": loaded_planner, "start": {**configured_start, **override}, **loaded_planner.get("runtime", {}), **settings["planner_output"]}
         pipeline = PerceptionPipeline(
             detector, segmenter,

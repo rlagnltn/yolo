@@ -63,3 +63,6 @@ Optimization of repeated commands, repository reads, logs, and token usage is th
 - Planner uses in-memory potential and occupancy results directly; UNKNOWN and OCCUPIED cells are never paths.
 - Diagonal moves enforce corner-cutting policy and planning remains deterministic for identical inputs.
 - Local-minimum detection is separate from recovery logic; grid paths are not vehicle trajectories.
+- Hybrid fallback runs only for defined gradient failure states, never configuration or invalid start/goal errors.
+- A* must not traverse UNKNOWN or OCCUPIED cells, must use admissible heuristics, and must resolve equal priorities deterministically.
+- Do not concatenate a failed gradient partial path with a new A* path; A* replans from the original start.

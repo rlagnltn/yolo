@@ -386,7 +386,7 @@ class PerceptionPipeline:
                 save_npy=options.get("save_npy", True), save_png=options.get("save_png", True),
                 save_gradient=options.get("save_gradient", True), save_visualizations=options.get("save_visualizations", True),
             )
-            return result, {"potential_grid": combined, "occupancy_grid": occupancy, "goal_cell": (row, col), "bev_config": mapping_grid["bev_config"]}
+            return result, {"potential_grid": combined, "occupancy_grid": occupancy, "cost_grid": mapping_grid["inflated_cost_grid"], "goal_cell": (row, col), "bev_config": mapping_grid["bev_config"]}
         except Exception as exc:
             if not self.continue_on_error:
                 raise
@@ -402,7 +402,7 @@ class PerceptionPipeline:
             return None
         try:
             import numpy as np
-            from src.planner import PlannerConfig, calculate_path_length_m, draw_path_on_potential, grid_path_to_metric, plan_gradient_descent, resolve_start_cell, validate_grid_path, validate_start_cell
+            from src.planner import PlannerConfig, calculate_path_length_m, draw_path_on_potential, grid_path_to_metric, plan_astar, plan_gradient_descent, plan_hybrid, resolve_start_cell, validate_grid_path, validate_start_cell
             from src.utils.io_utils import ensure_dir, save_image, save_json
             config = PlannerConfig.from_dict(options.get("config", {}))
             start = options.get("start", {})
@@ -410,11 +410,20 @@ class PerceptionPipeline:
             metric_start = (start["x_m"], start["z_m"]) if start.get("x_m") is not None or start.get("z_m") is not None else None
             start_cell = resolve_start_cell(grid_start, metric_start, context["bev_config"])
             validate_start_cell(start_cell, context["occupancy_grid"])
-            result = plan_gradient_descent(context["potential_grid"], context["occupancy_grid"], start_cell, context["goal_cell"], config)
+            if config.algorithm == "gradient_descent":
+                result = plan_gradient_descent(context["potential_grid"], context["occupancy_grid"], start_cell, context["goal_cell"], config)
+                selected_algorithm, fallback_used, fallback_reason, astar_result = "gradient_descent", False, None, None
+            elif config.algorithm == "astar":
+                result = plan_astar(context["occupancy_grid"], context["cost_grid"], start_cell, context["goal_cell"], config)
+                selected_algorithm, fallback_used, fallback_reason, astar_result = "astar", False, None, result
+            else:
+                hybrid = plan_hybrid(context["potential_grid"], context["occupancy_grid"], context["cost_grid"], start_cell, context["goal_cell"], config)
+                result, selected_algorithm, fallback_used, fallback_reason, astar_result = hybrid, hybrid["selected_algorithm"], hybrid["fallback_used"], hybrid["fallback_reason"], hybrid["astar_result"]
             path = result["path_rc"]; metric = grid_path_to_metric(path, context["bev_config"])
             if result["reached_goal"]: validate_grid_path(path, context["occupancy_grid"], start_cell, context["goal_cell"], config.connectivity, config.goal_tolerance_cells, config.prevent_corner_cutting)
             stem = f"frame_{frame_index:06d}"; path_dir = ensure_dir(options.get("path_dir", "outputs/perception/planner/paths")); vis_dir = options.get("visualization_dir", "outputs/perception/planner/visualizations")
-            metadata = {"coordinate_frame":"camera_xz", "algorithm":"gradient_descent", "status":result["status"], "reached_goal":result["reached_goal"], "start":{"row":start_cell[0],"col":start_cell[1]}, "goal":{"row":context["goal_cell"][0],"col":context["goal_cell"][1]}, "step_count":result["step_count"], "path_point_count":len(path), "path_length_m":calculate_path_length_m(metric), "termination_reason":result["termination_reason"], "local_minimum_detected":result["diagnostics"]["local_minimum_detected"]}
+            gradient_result = result.get("gradient_result")
+            metadata = {"coordinate_frame":"camera_xz", "algorithm":config.algorithm, "selected_algorithm":selected_algorithm, "status":result["status"], "reached_goal":result["reached_goal"], "fallback_used":fallback_used, "fallback_reason":fallback_reason, "gradient_status":None if gradient_result is None else gradient_result["status"], "astar_status":None if astar_result is None else astar_result["status"], "expanded_node_count":None if astar_result is None else astar_result["expanded_node_count"], "path_cost":None if astar_result is None else astar_result["path_cost"], "start":{"row":start_cell[0],"col":start_cell[1]}, "goal":{"row":context["goal_cell"][0],"col":context["goal_cell"][1]}, "step_count":len(path) - 1, "path_point_count":len(path), "path_length_m":calculate_path_length_m(metric), "termination_reason":result["termination_reason"], "local_minimum_detected":False if gradient_result is None else gradient_result["diagnostics"]["local_minimum_detected"]}
             if options.get("save_path_npy", True):
                 grid_file=path_dir/f"{stem}_grid.npy"; metric_file=path_dir/f"{stem}_metric.npy"; np.save(grid_file,path,allow_pickle=False); np.save(metric_file,metric,allow_pickle=False); metadata.update(grid_path_path=str(grid_file),metric_path_path=str(metric_file))
             if options.get("save_visualization", True): metadata["visualization_path"] = str(save_image(draw_path_on_potential(context["potential_grid"],path,start_cell,context["goal_cell"]), Path(vis_dir)/f"{stem}.png"))

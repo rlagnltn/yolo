@@ -1,5 +1,5 @@
 planner:
-  algorithm: gradient_descent
+  algorithm: hybrid
   connectivity: 8
   max_steps: 2000
   goal_tolerance_cells: 1
@@ -7,6 +7,13 @@ planner:
   prevent_corner_cutting: true
   revisit_limit: 2
   local_minimum_window: 5
+hybrid:
+  fallback_enabled: true
+  fallback_algorithm: astar
+  fallback_on: [local_minimum, cycle_detected, no_valid_neighbor, max_steps_exceeded]
+astar:
+  max_expansions: 100000
+  traversal_cost_weight: 5.0
 start: {input_type: grid, row: null, col: null, x_m: null, z_m: null}
 output: {path_dir: outputs/planner/paths, visualization_dir: outputs/planner/visualizations}
 runtime: {save_path_npy: true, save_path_json: true, save_visualization: true}

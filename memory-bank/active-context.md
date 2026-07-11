@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-Potential Field Gradient Path Planner is implemented; the next focus is Local Minimum Handling.
+Local Minimum Handling with A* Hybrid Fallback is implemented; the next focus is Path Smoothing and Trajectory Generation.
 
 ## Current Scope Boundary
 
@@ -10,8 +10,8 @@ Object detection, YOLO instance segmentation, SegFormer scene segmentation, mono
 
 ## Next Work Order
 
-1. Add Local Minimum Handling.
-2. Add an A* hybrid planner or trajectory smoothing later.
+1. Add Path Smoothing and Trajectory Generation.
+2. Add Vehicle Kinematics or Dynamic Planning later.
 
 ## Implementation Notes
 
@@ -35,8 +35,8 @@ Geometry source points are camera-coordinate XYZ in meters, generated from in-me
 ## Current Baseline
 
 - Baseline: current `main` after the Goal-conditioned Potential Field commit
-- Tests: pending final validation
+- Tests: `101 passed`
 - Remote target: `origin/main`
-- Completed: Potential Field Gradient Path Planner
-- Next: Local Minimum Handling
-- After: A* Hybrid Planner / Trajectory Smoothing
+- Completed: Local Minimum Handling with A* Hybrid Fallback
+- Next: Path Smoothing and Trajectory Generation
+- After: Vehicle Kinematics / Dynamic Planning

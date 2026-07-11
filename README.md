@@ -348,6 +348,8 @@ With `--enable-depth --enable-geometry`, each valid depth pixel is projected as 
 
 `--enable-planner` consumes the current frame's in-memory potential and occupancy grids; it never reloads saved map artifacts. Supply exactly one start form: grid (`--start-row`, `--start-col`) or camera-centric metric (`--start-x`, `--start-z`). The planner traverses only FREE cells, supports deterministic 4/8 connectivity, and blocks diagonal corner cutting by default. It reports `success`, `local_minimum`, `cycle_detected`, `no_valid_neighbor`, or `max_steps_exceeded`; local minima are detected and reported, not recovered in this stage. Grid paths are `[row, col]`, metric paths are camera-frame `[x_m, z_m]` cell centers, and neither represents a vehicle trajectory or control command. The stage saves grid/metric NPY paths, JSON metadata, and a BGR PNG overlay under `outputs/perception/planner/`.
 
+The default `hybrid` mode runs gradient descent first, then deterministically falls back to A* only after a supported gradient failure. A* excludes UNKNOWN/OCCUPIED cells and adds inflated traversability cost to its movement cost. Its fallback replans from the original start rather than joining a partial gradient path. This bypasses a local minimum through global search; it does not add path smoothing or vehicle kinematics.
+
 ## Roadmap
 
 1. YOLO object detection for driving video.

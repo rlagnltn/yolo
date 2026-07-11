@@ -31,10 +31,11 @@
 - Added Semantic Occupancy / Traversability Cost Grid generation and metric obstacle inflation.
 - Added Goal-conditioned Potential Field generation and gradients.
 - Added deterministic potential-gradient grid planning with optional unified-pipeline execution.
+- Added deterministic A* fallback from supported gradient-descent failures, using in-memory inflated cost grids.
 
 ## In Progress
 
-- Final validation and commit of Potential Field Gradient Path Planner.
+- Final validation and commit of Local Minimum Handling with A* Hybrid Fallback.
 
 ## Remaining
 
