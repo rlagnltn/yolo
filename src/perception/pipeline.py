@@ -45,6 +45,7 @@ class PerceptionPipeline:
         mapping_output: dict[str, Any] | None = None,
         potential_output: dict[str, Any] | None = None,
         planner_output: dict[str, Any] | None = None,
+        trajectory_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         detections: list[dict[str, Any]] = []
         segments: list[dict[str, Any]] = []
@@ -148,6 +149,7 @@ class PerceptionPipeline:
         )
         potential_result, planner_context = self._build_potential_result(mapping_grid, frame_index, potential_output, errors)
         planner_result = self._build_planner_result(planner_context, frame_index, planner_output, errors)
+        trajectory_result = self._build_trajectory_result(trajectory_output, planner_result, errors)
         return {
             "frame_index": frame_index,
             "timestamp_sec": float(timestamp_sec),
@@ -163,6 +165,7 @@ class PerceptionPipeline:
             "mapping": mapping_result,
             "potential": potential_result,
             "planner": planner_result,
+            "trajectory": trajectory_result,
             "errors": errors,
         }
 
@@ -428,11 +431,34 @@ class PerceptionPipeline:
                 grid_file=path_dir/f"{stem}_grid.npy"; metric_file=path_dir/f"{stem}_metric.npy"; np.save(grid_file,path,allow_pickle=False); np.save(metric_file,metric,allow_pickle=False); metadata.update(grid_path_path=str(grid_file),metric_path_path=str(metric_file))
             if options.get("save_visualization", True): metadata["visualization_path"] = str(save_image(draw_path_on_potential(context["potential_grid"],path,start_cell,context["goal_cell"]), Path(vis_dir)/f"{stem}.png"))
             if options.get("save_path_json", True): metadata["metadata_path"] = str(save_json(metadata,path_dir/f"{stem}.json"))
+            self._last_planner_memory = {"path_rc": path, "occupancy_grid": context["occupancy_grid"], "cost_grid": context["cost_grid"], "bev_config": context["bev_config"], "source_algorithm": selected_algorithm, "frame_index": frame_index}
             return metadata
         except Exception as exc:
             if not self.continue_on_error: raise
             errors.append(f"planner: {exc}")
             return None
+
+    def _build_trajectory_result(self, trajectory_output: dict[str, Any] | None, planner_result: dict[str, Any] | None, errors: list[str]) -> dict[str, Any] | None:
+        options = trajectory_output or {}
+        if not options.get("enabled", False): return None
+        if planner_result is None or not planner_result.get("reached_goal"):
+            errors.append("trajectory: planner must reach the goal before trajectory generation."); return None
+        try:
+            import numpy as np
+            from pathlib import Path
+            from src.trajectory import TrajectoryConfig, generate_trajectory
+            from src.utils.io_utils import ensure_dir, save_json
+            memory = self._last_planner_memory
+            result = generate_trajectory(memory["path_rc"], memory["occupancy_grid"], memory["bev_config"], TrajectoryConfig.from_dict(options.get("config", {})), memory["cost_grid"])
+            if not result.get("collision_free"): return {"status": result["status"], "trajectory_type": "geometric_reference", "collision_free": False}
+            data = ensure_dir(options.get("trajectory_dir", "outputs/perception/trajectory/data")); stem=f"frame_{memory['frame_index']:06d}"; traj=result["trajectory"]
+            positions=data/f"{stem}_positions.npy"; bundle=data/f"{stem}_trajectory.npz"; np.save(positions,traj["positions_xz"],allow_pickle=False); np.savez_compressed(bundle,**traj,source_grid_path=memory["path_rc"],shortcut_grid_path=result["shortcut_path_rc"])
+            meta={"coordinate_frame":"camera_xz","trajectory_type":"geometric_reference","status":result["status"],"source_algorithm":memory["source_algorithm"],"trajectory_point_count":len(traj["positions_xz"]),"path_length_m":float(traj["arc_length_m"][-1]),"collision_free":True,"smoothing_fallback_used":result["smoothing_fallback_used"],"maximum_curvature_1pm":result["diagnostics"]["maximum_observed_curvature"],"positions_path":str(positions),"trajectory_path":str(bundle)}
+            if options.get("save_json", True): meta["metadata_path"]=str(save_json(meta,data/f"{stem}.json"))
+            return meta
+        except Exception as exc:
+            if not self.continue_on_error: raise
+            errors.append(f"trajectory: {exc}"); return None
 
     @staticmethod
     def _resolve_potential_goal(goal: dict[str, Any], mapping_grid: dict[str, Any]) -> tuple[int, int, float, float]:
@@ -474,6 +500,7 @@ class PerceptionPipeline:
         mapping_output: dict[str, Any] | None = None,
         potential_output: dict[str, Any] | None = None,
         planner_output: dict[str, Any] | None = None,
+        trajectory_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         from src.utils.video_utils import get_video_info, iter_video_frames
         from src.utils.visualization import save_perception_overlay
@@ -494,6 +521,7 @@ class PerceptionPipeline:
                 mapping_output=mapping_output,
                 potential_output=potential_output,
                 planner_output=planner_output,
+                trajectory_output=trajectory_output,
             )
             frames.append(frame_result)
             if save_visualizations and visualization_dir is not None:
