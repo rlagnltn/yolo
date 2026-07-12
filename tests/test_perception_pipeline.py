@@ -64,3 +64,23 @@ def test_process_frame_records_model_error_and_continues():
 def test_empty_perception_visualization_returns_frame_copy():
     result = draw_perception_overlay(DummyFrame(), [], [], [])
     assert result.copied is True
+
+
+def test_process_video_supports_independent_frame_chunks(monkeypatch, tmp_path):
+    import src.utils.video_utils as video_utils
+
+    monkeypatch.setattr(video_utils, "get_video_info", lambda _: {
+        "frame_count": 6, "fps": 10.0, "width": 30, "height": 20,
+    })
+    monkeypatch.setattr(video_utils, "iter_video_frames", lambda _: iter(
+        (index, index / 10.0, DummyFrame()) for index in range(6)
+    ))
+    pipeline = PerceptionPipeline(DummyDetector(), DummySegmenter())
+    result = pipeline.process_video(
+        tmp_path / "dummy.mp4", start_frame=2, max_frames=2,
+        save_masks=False, save_visualizations=False,
+    )
+    assert [frame["frame_index"] for frame in result["frames"]] == [2, 3]
+    assert result["metadata"]["start_frame"] == 2
+    assert result["metadata"]["end_frame_exclusive"] == 4
+    assert result["metadata"]["processed_frame_count"] == 2

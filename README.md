@@ -350,6 +350,40 @@ With `--enable-depth --enable-geometry`, each valid depth pixel is projected as 
 
 The default `hybrid` mode runs gradient descent first, then deterministically falls back to A* only after a supported gradient failure. A* excludes UNKNOWN/OCCUPIED cells and adds inflated traversability cost to its movement cost. Its fallback replans from the original start rather than joining a partial gradient path. This bypasses a local minimum through global search; it does not add path smoothing or vehicle kinematics.
 
+Set `auto_free_cells.enabled: true` in `configs/planner.yaml` to choose a start and goal from the current observed FREE region. Start selection prefers a FREE cell within 0.5 m of the previous start before falling back to the nearest centerline cell. Goal selection first requests 5 m and then tries 4 m and 3 m connected horizons; fallback results are marked `short_horizon` and are not counted as full-horizon raw successes. Auto selection and A* share the same connectivity and diagonal corner-cutting rules. Selection results use stable `reason_code` values such as `NO_FREE_START` and `NO_FORWARD_GOAL`.
+
+The unified video pipeline plans every three frames (approximately 10 Hz for the 29.97 FPS sample). Between attempts, or after a failed attempt, it may reuse the last successful grid path for at most 15 video frames (approximately 0.50 seconds). Reuse is accepted only after the complete path is checked against the current occupancy grid; UNKNOWN, OCCUPIED, invalid moves, and blocked diagonal corners invalidate it immediately. JSON distinguishes `path_source: new`, `reused`, and `unavailable`, plus `planning_attempted`, `raw_planner_success`, `collision_validated`, and path age.
+
+Evaluate a perception result with:
+
+```bash
+python scripts/evaluate_planner.py outputs/perception/perception.json --output outputs/perception/planner_evaluation.json
+```
+
+The report separates raw success per planning attempt from validated per-frame path availability, and reports failure-gap P95, maximum gap, outages over 0.50 seconds, structured failure reasons, short horizons, reused frames, and the criteria defined in `memory.md`.
+
+Long videos can be evaluated in independent chunks while retaining original frame numbers:
+
+```bash
+python scripts/run_perception.py --input datasets/raw/sample_10s.mp4 --output outputs/perception/chunk_100_199.json --start-frame 100 --max-frames 100 --enable-scene-segmentation --enable-depth --enable-geometry --enable-bev --enable-mapping --enable-potential --enable-planner --auto-free-cells --no-save-vis
+```
+
+`--max-frames` is the number of frames processed after `--start-frame`, not an absolute ending index. Each chunk initializes temporal state independently. Auto FREE-cell selection labels the FREE grid once with fast connected-component labeling. When diagonal corner cutting is prohibited, 4-connected components are equivalent to legal 8-neighbor reachability because every permitted diagonal also has a FREE orthogonal two-step connection.
+
+Render new successful paths from a perception chunk back onto its original video pixels:
+
+```bash
+python scripts/render_path_overlay.py --input datasets/raw/sample_10s.mp4 --perception outputs/perception/perception_chunk_100_199.json --output outputs/perception/path_overlay_100_199.mp4
+```
+
+The renderer creates an MP4 only for the JSON frame range. It maps each path cell to the nearest observed 3D point in the same BEV cell, then uses that point's original image pixel. New paths are green with start/goal markers; reused and unavailable paths are not drawn. Missing cells break the polyline rather than drawing an unsupported bridge. Results using experimental intrinsics are labeled `EXPERIMENTAL GEOMETRY`.
+
+Multiple non-overlapping chunk JSON files can be supplied in order. Use `--speed 0.3` to keep every frame while writing the MP4 at 30% of the source FPS:
+
+```bash
+python scripts/render_path_overlay.py --input datasets/raw/sample_10s.mp4 --perception outputs/perception/perception_chunk_000_099.json outputs/perception/perception_chunk_100_199.json outputs/perception/perception_chunk_200_298.json --output outputs/perception/path_overlay_full_0.3x.mp4 --speed 0.3
+```
+
 ## Streaming video planning
 
 Enable scene segmentation, depth, geometry, BEV, mapping, potential, planner, and trajectory in `configs/perception.yaml`, provide calibrated camera intrinsics, then run:

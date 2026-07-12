@@ -1,12 +1,15 @@
 camera:
-  fx: null
-  fy: null
-  cx: null
-  cy: null
-  width: null
-  height: null
+  experimental: true
+  # Experimental estimate for datasets/raw/sample_10s.mp4 (960x540), assuming a 90-degree horizontal FOV.
+  # Replace these values with measured camera calibration before using geometry for real-world measurements.
+  fx: 480.0
+  fy: 480.0
+  cx: 480.0
+  cy: 270.0
+  width: 960
+  height: 540
 
 backprojection:
-  stride: 4
+  stride: 2
   min_depth_m: 0.1
   max_depth_m: 80.0

@@ -20,6 +20,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--save-vis", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--save-masks", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--max-frames", type=int)
+    parser.add_argument("--start-frame", type=int)
     parser.add_argument("--device")
     parser.add_argument("--iou-threshold", type=float)
     parser.add_argument("--continue-on-error", action=argparse.BooleanOptionalAction, default=None)
@@ -37,6 +38,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--enable-planner", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--planner-config")
     parser.add_argument("--planner-algorithm", choices=("gradient_descent", "astar", "hybrid"))
+    parser.add_argument("--auto-free-cells", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--start-row", type=int); parser.add_argument("--start-col", type=int)
     parser.add_argument("--start-x", type=float); parser.add_argument("--start-z", type=float)
     parser.add_argument("--goal-row", type=int)
@@ -83,7 +85,7 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
             },
         },
         "runtime": {
-            "max_frames": None, "save_masks": True, "save_visualizations": True,
+            "start_frame": 0, "max_frames": None, "save_masks": True, "save_visualizations": True,
             "save_scene_class_maps": True, "save_scene_color_maps": True,
             "save_scene_regions": True, "continue_on_error": True,
             "save_raw_depth": True, "save_depth_png": True,
@@ -93,7 +95,7 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
             "enabled": False,
             "camera_config": "configs/camera.yaml",
             "point_cloud_dir": "outputs/perception/geometry/point_clouds",
-            "stride": 4,
+            "stride": 2,
             "min_depth_m": 0.1,
             "max_depth_m": 80.0,
         },
@@ -186,7 +188,7 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
         ),
         "camera_config": args.camera_config or geometry.get("camera_config", "configs/camera.yaml"),
         "geometry_point_cloud_dir": geometry.get("point_cloud_dir", "outputs/perception/geometry/point_clouds"),
-        "geometry_stride": args.geometry_stride if args.geometry_stride is not None else int(geometry.get("stride", 4)),
+        "geometry_stride": args.geometry_stride if args.geometry_stride is not None else int(geometry.get("stride", 2)),
         "geometry_min_depth_m": geometry.get("min_depth_m", 0.1),
         "geometry_max_depth_m": geometry.get("max_depth_m", 80.0),
         "bev_enabled": (
@@ -207,6 +209,7 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
         "planner_enabled": args.enable_planner if args.enable_planner is not None else bool(planner_config.get("enabled", False)),
         "planner_config": args.planner_config or planner_config.get("config", "configs/planner.yaml"),
         "planner_algorithm": args.planner_algorithm,
+        "auto_free_cells": args.auto_free_cells,
         "planner_output": planner_config.get("output", {}),
         "start_override": {"row": args.start_row, "col": args.start_col, "x_m": args.start_x, "z_m": args.start_z},
         "goal_override": {"row": args.goal_row, "col": args.goal_col, "x_m": args.goal_x, "z_m": args.goal_z},
@@ -214,6 +217,7 @@ def resolve_settings(args: argparse.Namespace) -> dict[str, Any]:
         "iou_threshold": args.iou_threshold if args.iou_threshold is not None else float(fusion["iou_threshold"]),
         "require_same_class": bool(fusion["require_same_class"]),
         "max_frames": args.max_frames if args.max_frames is not None else runtime["max_frames"],
+        "start_frame": args.start_frame if args.start_frame is not None else int(runtime.get("start_frame", 0)),
         "save_masks": args.save_masks if args.save_masks is not None else bool(runtime["save_masks"]),
         "save_visualizations": args.save_vis if args.save_vis is not None else bool(runtime["save_visualizations"]),
         "continue_on_error": args.continue_on_error if args.continue_on_error is not None else bool(runtime["continue_on_error"]),
@@ -306,7 +310,15 @@ def main() -> int:
             override = {key: value for key, value in settings["start_override"].items() if value is not None}
             if settings["planner_algorithm"] is not None:
                 loaded_planner.setdefault("planner", {})["algorithm"] = settings["planner_algorithm"]
+            if settings["auto_free_cells"] is not None:
+                loaded_planner.setdefault("auto_free_cells", {})["enabled"] = settings["auto_free_cells"]
             planner_settings = {"enabled": True, "config": loaded_planner, "start": {**configured_start, **override}, **loaded_planner.get("runtime", {}), **settings["planner_output"]}
+            if loaded_planner.get("auto_free_cells", {}).get("enabled", False):
+                auto_options = dict(loaded_planner["auto_free_cells"])
+                planner_rules = loaded_planner.get("planner", {})
+                auto_options.setdefault("connectivity", planner_rules.get("connectivity", 8))
+                auto_options.setdefault("prevent_corner_cutting", planner_rules.get("prevent_corner_cutting", True))
+                potential_settings["auto_free_cells"] = auto_options
         pipeline = PerceptionPipeline(
             detector, segmenter,
             scene_segmenter=scene_segmenter,
@@ -322,6 +334,7 @@ def main() -> int:
             save_masks=settings["save_masks"],
             save_visualizations=settings["save_visualizations"],
             max_frames=settings["max_frames"],
+            start_frame=settings["start_frame"],
             scene_output={
                 "class_map_dir": settings["scene_class_map_dir"],
                 "color_map_dir": settings["scene_color_map_dir"],
@@ -347,6 +360,7 @@ def main() -> int:
             geometry_output={
                 "enabled": settings["geometry_enabled"],
                 "intrinsics": geometry_intrinsics,
+                "experimental_intrinsics": bool(geometry_intrinsics.get("experimental", False)),
                 "point_cloud_dir": settings["geometry_point_cloud_dir"],
                 "stride": settings["geometry_stride"],
                 "min_depth_m": settings["geometry_min_depth_m"],

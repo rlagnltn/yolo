@@ -15,5 +15,20 @@ astar:
   max_expansions: 100000
   traversal_cost_weight: 5.0
 start: {input_type: grid, row: null, col: null, x_m: null, z_m: null}
+auto_free_cells:
+  enabled: false
+  centerline_half_width_m: 2.0
+  minimum_forward_distance_m: 5.0
+  fallback_forward_distances_m: [4.0, 3.0]
+  start_stability_radius_m: 0.5
+  alternative_start_search_radius_m: 0.5
+  connectivity: 8
+  prevent_corner_cutting: true
 output: {path_dir: outputs/planner/paths, visualization_dir: outputs/planner/visualizations}
-runtime: {save_path_npy: true, save_path_json: true, save_visualization: true}
+runtime:
+  save_path_npy: true
+  save_path_json: true
+  save_visualization: true
+  planning_interval_frames: 3
+  max_reuse_frames: 15
+  adaptive_replan_on_invalid_reuse: true

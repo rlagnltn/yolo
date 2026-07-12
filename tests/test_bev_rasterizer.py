@@ -35,6 +35,15 @@ def test_empty_point_cloud_and_bad_shape():
         points_to_bev_indices(np.empty((3,), dtype=np.float32), config)
 
 
+def test_float32_upper_boundary_never_produces_out_of_bounds_index():
+    config = BEVConfig(-20.0, 20.0, 0.0, 80.0, 0.2)
+    upper_x = np.nextafter(np.float32(20.0), np.float32(-np.inf))
+    upper_z = np.nextafter(np.float32(80.0), np.float32(-np.inf))
+    out = points_to_bev_indices(np.asarray([[upper_x, 0.0, upper_z]], np.float32), config)
+    assert 0 <= out["col_indices"][0] < config.width_cells
+    assert 0 <= out["row_indices"][0] < config.height_cells
+
+
 def test_semantic_raster_nearest_tie_break_and_counts():
     config = BEVConfig(-1.0, 1.0, 0.0, 2.0, 1.0)
     points = np.array([

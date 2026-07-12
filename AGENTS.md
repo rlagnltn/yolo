@@ -22,7 +22,6 @@ Repository guidance for Codex and other coding agents.
 - Treat float32 NPY as the lossless source depth. uint16 PNG and color maps are derived artifacts.
 - Never store visualization-normalized depth as source depth or embed full depth arrays in JSON.
 - Initialize the depth model once, reuse the already-read frame, and validate depth/scene-map shapes before combining them.
-- Never guess camera intrinsics; require explicit calibration values before geometry back-projection.
 - Geometry must use in-memory depth and class maps from the current frame, not reload saved artifacts for computation.
 - Record geometry coordinate frame and units in metadata; do not conflate camera-coordinate point clouds with BEV.
 - BEV must use in-memory geometry results directly; do not reload saved NPZ or PNG artifacts for computation.

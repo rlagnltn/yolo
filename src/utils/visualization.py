@@ -206,7 +206,11 @@ def save_perception_overlay(
     scene_result = frame_result.get("scene_segmentation") or {}
     scene_class_map = scene_result.get("_class_map")
     if scene_class_map is None and scene_result.get("class_map_path"):
-        scene_class_map = cv2.imread(str(scene_result["class_map_path"]), cv2.IMREAD_UNCHANGED)
+        # Class-ID maps are single-channel artifacts.  Reading them as grayscale
+        # also normalizes OpenCV builds that expose a PNG gray image as HxWx1.
+        scene_class_map = cv2.imread(str(scene_result["class_map_path"]), cv2.IMREAD_GRAYSCALE)
+        if scene_class_map is not None and scene_class_map.ndim == 3 and scene_class_map.shape[2] == 1:
+            scene_class_map = scene_class_map[:, :, 0]
     annotated = draw_perception_overlay(
         frame,
         frame_result.get("detections", []),

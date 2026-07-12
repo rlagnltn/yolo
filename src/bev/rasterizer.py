@@ -42,6 +42,9 @@ def points_to_bev_indices(points_xyz: Any, config: BEVConfig) -> dict[str, np.nd
         }
     col = np.floor((x[point_indices] - config.x_min_m) / config.resolution_m).astype(np.int32)
     row_near = np.floor((z[point_indices] - config.z_min_m) / config.resolution_m).astype(np.int32)
+    # Float32 boundary arithmetic can round an in-range value to width/height.
+    col = np.clip(col, 0, config.width_cells - 1)
+    row_near = np.clip(row_near, 0, config.height_cells - 1)
     row = (config.height_cells - 1 - row_near).astype(np.int32)
     return {"row_indices": row, "col_indices": col, "valid_point_indices": point_indices}
 

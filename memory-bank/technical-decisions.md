@@ -22,6 +22,14 @@ Class maps are saved as single-channel PNGs, while JSON stores only paths and st
 
 ## Video Processing
 
+For the current 29.97 FPS research sample, the planner target cadence is 10 Hz (one attempt every three video frames). A last valid path may bridge at most five failed planning attempts, or approximately 0.50 seconds, only after collision validation against the current occupancy grid. Longer gaps are reported as `path_unavailable`. The full evaluation gates and measured baseline are recorded in `memory.md`.
+
+Raw planner success is measured per actual planning attempt, not per video frame. Per-frame continuity is measured separately as validated path availability. A 3 m or 4 m `short_horizon` path can provide temporary validated availability but is excluded from the full 5 m raw-success numerator. Auto-cell connectivity and both planners use one shared FREE-neighbor policy.
+
+FREE components are labeled with OpenCV instead of repeated Python BFS. Four-connected labeling is used whenever diagonal corner cutting is prohibited; this is equivalent to legal 8-neighbor reachability because every permitted diagonal has both orthogonal FREE cells. Chunk runs preserve source frame indices but reset temporal occupancy and path memory at the chunk boundary.
+
+Original-video path overlays use the source `pixels_uv` saved beside each camera-coordinate point cloud. For a planner grid cell, the renderer chooses the nearest camera point in that same BEV cell; no camera height or pitch is guessed. Only newly successful paths are rendered, and discontinuities in observed path cells deliberately break the displayed line.
+
 ## Monocular Metric Depth
 
 The configured default `depth-anything/Depth-Anything-V2-Metric-VKITTI-Small` is the original checkpoint repository, so the loader resolves it to the official Transformers-compatible `depth-anything/Depth-Anything-V2-Metric-Outdoor-Small-hf`. Its config explicitly declares metric depth and `max_depth: 80`; JSON records the requested and loaded names.

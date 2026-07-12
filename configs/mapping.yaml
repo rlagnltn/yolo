@@ -24,6 +24,10 @@ inflation:
   radius_m: 1.0
   decay: linear
 
+temporal:
+  enabled: true
+  ttl_frames: 8
+
 output:
   occupancy_dir: outputs/mapping/occupancy
   cost_grid_dir: outputs/mapping/cost_grids
